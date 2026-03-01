@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>small wins</title>
+<title>notebook</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f5d5e0'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' fill='%23d4849a'%3E✦%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -213,7 +213,8 @@ header {
   transition: opacity 0.15s, color 0.15s;
 }
 .win-card:hover .btn-delete,
-.habit-row:hover .btn-delete { opacity: 1; }
+.habit-row:hover .btn-delete,
+.reminder-row:hover .btn-delete { opacity: 1; }
 .btn-delete:hover { color: var(--accent-hover); }
 
 /* ── Empty state ─────────────────────────────────────── */
@@ -326,18 +327,50 @@ header {
   text-align: right;
 }
 .streak-badge.lit { color: var(--accent); }
+
+/* ── Reminders tab ───────────────────────────────────── */
+.reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  margin-bottom: 7px;
+  transition: border-color 0.15s;
+  animation: slideIn 0.2s ease;
+}
+.reminder-row:hover { border-color: var(--border-blush); }
+.reminder-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.reminder-text {
+  flex: 1;
+  font-size: 0.855rem;
+  font-weight: 400;
+  color: var(--text-plum);
+  text-transform: lowercase;
+  word-break: break-word;
+  line-height: 1.4;
+}
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <span class="app-title">small wins <span class="glyph">✦</span></span>
+    <span class="app-title">notebook <span class="glyph">✦</span></span>
   </header>
 
   <!-- Tab nav -->
   <nav class="tabs" role="tablist">
     <button class="tab-btn active" data-tab="wins" role="tab" aria-selected="true">wins</button>
     <button class="tab-btn" data-tab="habits" role="tab" aria-selected="false">habits</button>
+    <button class="tab-btn" data-tab="reminders" role="tab" aria-selected="false">reminders</button>
   </nav>
 
   <!-- ── WINS PANEL ── -->
@@ -377,6 +410,23 @@ header {
       <span class="habits-progress" id="habits-progress"></span>
     </div>
     <div id="habits-list"></div>
+  </section>
+
+  <!-- ── REMINDERS PANEL ── -->
+  <section id="panel-reminders" class="panel" role="tabpanel">
+    <div class="input-row">
+      <input
+        id="reminder-input"
+        class="text-input"
+        type="text"
+        placeholder="e.g. review your notes every evening"
+        maxlength="120"
+        autocomplete="off"
+        autocorrect="off"
+      >
+      <button class="btn-primary btn-add" id="btn-add-reminder" title="add reminder">+</button>
+    </div>
+    <div id="reminders-list"></div>
   </section>
 </div>
 
@@ -436,9 +486,15 @@ function loadHabits() {
 }
 function saveHabits(arr) { localStorage.setItem('sw_habits', JSON.stringify(arr)); }
 
+function loadReminders() {
+  try { return JSON.parse(localStorage.getItem('sw_reminders') || '[]'); } catch { return []; }
+}
+function saveReminders(arr) { localStorage.setItem('sw_reminders', JSON.stringify(arr)); }
+
 // ── State ────────────────────────────────────────────────────────────────
 let wins = loadWins();
 let habits = loadHabits();
+let reminders = loadReminders();
 
 // ── Wins feed ────────────────────────────────────────────────────────────
 function renderWins() {
@@ -656,6 +712,53 @@ function addHabit() {
   renderHabits();
 }
 
+// ── Render reminders ─────────────────────────────────────────────────────
+function renderReminders() {
+  const list = document.getElementById('reminders-list');
+  if (reminders.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <span class="empty-glyph">◌</span>
+      <span class="empty-text">no reminders yet — add something to come back to</span>
+    </div>`;
+    return;
+  }
+  list.innerHTML = '';
+  reminders.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'reminder-row';
+    row.innerHTML = `
+      <div class="reminder-pip"></div>
+      <div class="reminder-text">${escHtml(r.text)}</div>
+      <button class="btn-delete" title="delete" data-id="${escHtml(r.id)}">×</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      reminders = reminders.filter(r => r.id !== id);
+      saveReminders(reminders);
+      renderReminders();
+    });
+  });
+}
+
+// ── Add reminder ──────────────────────────────────────────────────────────
+function addReminder() {
+  const input = document.getElementById('reminder-input');
+  const text = input.value.trim().toLowerCase();
+  if (!text) return;
+  if (reminders.some(r => r.text === text)) {
+    input.classList.add('flash-error');
+    setTimeout(() => input.classList.remove('flash-error'), 500);
+    return;
+  }
+  reminders.push({ id: uid(), text, createdAt: Date.now() });
+  saveReminders(reminders);
+  input.value = '';
+  renderReminders();
+}
+
 // ── Tabs ─────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -682,9 +785,15 @@ document.getElementById('habit-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') addHabit();
 });
 
+document.getElementById('btn-add-reminder').addEventListener('click', addReminder);
+document.getElementById('reminder-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addReminder();
+});
+
 // ── Init ─────────────────────────────────────────────────────────────────
 renderWins();
 renderHabits();
+renderReminders();
 </script>
 </body>
 </html>
