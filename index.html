@@ -497,6 +497,57 @@ header {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* ── Time filters ────────────────────────────────────── */
+.time-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 24px;
+}
+.time-pill {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-blush);
+  background: var(--bg-card);
+  color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.time-pill:hover { border-color: var(--accent); color: var(--accent); }
+.time-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.duration-select {
+  padding: 10px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+.duration-select:focus { border-color: var(--accent); }
+
+.activity-duration {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: -10px;
+  margin-bottom: 14px;
+}
+.duration-tag {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
 </style>
 </head>
 <body>
@@ -571,6 +622,13 @@ header {
 
   <!-- ── BORED PANEL ── -->
   <section id="panel-bored" class="panel" role="tabpanel">
+    <div class="time-filters" id="time-filters">
+      <button class="time-pill active" data-dur="">any time</button>
+      <button class="time-pill" data-dur="5">5 min</button>
+      <button class="time-pill" data-dur="15">15 min</button>
+      <button class="time-pill" data-dur="30">30 min</button>
+      <button class="time-pill" data-dur="60">1 hr</button>
+    </div>
     <div id="bored-main"></div>
     <button class="customize-toggle" id="btn-customize-toggle">
       customize <span class="arrow">↓</span>
@@ -586,6 +644,13 @@ header {
           autocomplete="off"
           autocorrect="off"
         >
+        <select id="activity-duration" class="duration-select">
+          <option value="">no time</option>
+          <option value="5">5 min</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="60">1 hr</option>
+        </select>
         <button class="btn-primary btn-add" id="btn-add-activity" title="add">+</button>
       </div>
       <div id="activity-list"></div>
@@ -655,16 +720,16 @@ function loadReminders() {
 function saveReminders(arr) { localStorage.setItem('sw_reminders', JSON.stringify(arr)); }
 
 const DEFAULT_ACTIVITIES = [
-  { id: 'da1', text: 'go for a walk', recurring: true, completed: false },
-  { id: 'da2', text: 'make a cup of tea', recurring: true, completed: false },
-  { id: 'da3', text: 'sketch something', recurring: true, completed: false },
-  { id: 'da4', text: 'read for 10 minutes', recurring: true, completed: false },
-  { id: 'da5', text: 'do 10 push-ups', recurring: true, completed: false },
-  { id: 'da6', text: 'tidy one small area', recurring: true, completed: false },
-  { id: 'da7', text: 'write in a journal', recurring: true, completed: false },
-  { id: 'da8', text: 'stretch for 5 minutes', recurring: true, completed: false },
-  { id: 'da9', text: 'doodle something', recurring: true, completed: false },
-  { id: 'da10', text: 'learn one new word', recurring: true, completed: false },
+  { id: 'da1',  text: 'go for a walk',        recurring: true, completed: false, duration: 30 },
+  { id: 'da2',  text: 'make a cup of tea',     recurring: true, completed: false, duration: 5  },
+  { id: 'da3',  text: 'sketch something',      recurring: true, completed: false, duration: 15 },
+  { id: 'da4',  text: 'read for 10 minutes',   recurring: true, completed: false, duration: 15 },
+  { id: 'da5',  text: 'do 10 push-ups',        recurring: true, completed: false, duration: 5  },
+  { id: 'da6',  text: 'tidy one small area',   recurring: true, completed: false, duration: 15 },
+  { id: 'da7',  text: 'write in a journal',    recurring: true, completed: false, duration: 15 },
+  { id: 'da8',  text: 'stretch for 5 minutes', recurring: true, completed: false, duration: 5  },
+  { id: 'da9',  text: 'doodle something',      recurring: true, completed: false, duration: 15 },
+  { id: 'da10', text: 'learn one new word',    recurring: true, completed: false, duration: 5  },
 ];
 
 function loadActivities() {
@@ -686,6 +751,7 @@ let habits = loadHabits();
 let reminders = loadReminders();
 let activities = loadActivities();
 let currentActivityId = null;
+let selectedDuration = null;
 
 // ── Wins feed ────────────────────────────────────────────────────────────
 function renderWins() {
@@ -951,8 +1017,15 @@ function addReminder() {
 }
 
 // ── Bored tab ────────────────────────────────────────────────────────────
+function fmtDur(d) { return d === 60 ? '1 hr' : d + ' min'; }
+function fmtDurShort(d) { return d === 60 ? '1h' : d + 'm'; }
+
 function getAvailable() {
-  return activities.filter(a => a.recurring || !a.completed);
+  return activities.filter(a => {
+    if (!a.recurring && a.completed) return false;
+    if (selectedDuration === null) return true;
+    return a.duration != null && a.duration <= selectedDuration;
+  });
 }
 
 function renderBored() {
@@ -967,9 +1040,12 @@ function renderBored() {
   if (!currentActivityId) {
     const pool = getAvailable();
     if (pool.length === 0) {
+      const msg = selectedDuration !== null
+        ? `no activities within ${fmtDur(selectedDuration)} — try a different filter`
+        : 'no activities left — add more in customize';
       main.innerHTML = `<div class="empty-state">
         <span class="empty-glyph">◌</span>
-        <span class="empty-text">no activities left — add more in customize</span>
+        <span class="empty-text">${msg}</span>
       </div>`;
     } else {
       main.innerHTML = `<div class="bored-intro">
@@ -988,9 +1064,13 @@ function renderBored() {
   const activity = activities.find(a => a.id === currentActivityId);
   if (!activity) { currentActivityId = null; renderBored(); return; }
 
+  const durHTML = activity.duration != null
+    ? `<div class="activity-duration">${fmtDur(activity.duration)}</div>` : '';
+
   main.innerHTML = `
     <div class="activity-card">
       <div class="activity-text">${escHtml(activity.text)}</div>
+      ${durHTML}
       <div class="activity-actions">
         <button class="btn-complete" id="btn-complete">complete ✓</button>
         <button class="btn-reroll" id="btn-reroll">reroll</button>
@@ -1029,8 +1109,11 @@ function renderActivityList() {
   activities.forEach(a => {
     const row = document.createElement('div');
     row.className = 'activity-row';
+    const durTag = a.duration != null
+      ? `<span class="duration-tag">${fmtDurShort(a.duration)}</span>` : '';
     row.innerHTML = `
       <div class="activity-row-text">${escHtml(a.text)}</div>
+      ${durTag}
       <button class="btn-recurring${a.recurring ? ' on' : ''}" data-id="${escHtml(a.id)}">${a.recurring ? 'recurring' : 'one-time'}</button>
       <button class="btn-delete" title="delete" data-id="${escHtml(a.id)}">×</button>
     `;
@@ -1064,16 +1147,19 @@ function renderActivityList() {
 
 function addActivity() {
   const input = document.getElementById('activity-input');
+  const durSelect = document.getElementById('activity-duration');
   const text = input.value.trim().toLowerCase();
+  const duration = durSelect.value ? parseInt(durSelect.value) : null;
   if (!text) return;
   if (activities.some(a => a.text === text)) {
     input.classList.add('flash-error');
     setTimeout(() => input.classList.remove('flash-error'), 500);
     return;
   }
-  activities.push({ id: uid(), text, recurring: true, completed: false });
+  activities.push({ id: uid(), text, recurring: true, completed: false, duration });
   saveActivities(activities);
   input.value = '';
+  durSelect.value = '';
   renderActivityList();
   renderBored();
 }
@@ -1107,6 +1193,20 @@ document.getElementById('habit-input').addEventListener('keydown', e => {
 document.getElementById('btn-add-reminder').addEventListener('click', addReminder);
 document.getElementById('reminder-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') addReminder();
+});
+
+document.getElementById('time-filters').addEventListener('click', e => {
+  const pill = e.target.closest('.time-pill');
+  if (!pill) return;
+  document.querySelectorAll('.time-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  selectedDuration = pill.dataset.dur ? parseInt(pill.dataset.dur) : null;
+  // If current activity no longer fits, dismiss it
+  if (currentActivityId && selectedDuration !== null) {
+    const a = activities.find(a => a.id === currentActivityId);
+    if (!a || a.duration == null || a.duration > selectedDuration) currentActivityId = null;
+  }
+  renderBored();
 });
 
 document.getElementById('btn-customize-toggle').addEventListener('click', () => {
