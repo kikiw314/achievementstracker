@@ -478,10 +478,6 @@ header {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.activity-row-text.done {
-  opacity: 0.4;
-  text-decoration: line-through;
-}
 .btn-recurring {
   padding: 3px 10px;
   border-radius: 999px;
@@ -1004,8 +1000,8 @@ function renderBored() {
 
   document.getElementById('btn-complete').addEventListener('click', () => {
     if (!activity.recurring) {
-      const idx = activities.findIndex(a => a.id === currentActivityId);
-      if (idx !== -1) { activities[idx].completed = true; saveActivities(activities); }
+      activities = activities.filter(a => a.id !== currentActivityId);
+      saveActivities(activities);
     }
     currentActivityId = null;
     renderBored();
@@ -1033,9 +1029,8 @@ function renderActivityList() {
   activities.forEach(a => {
     const row = document.createElement('div');
     row.className = 'activity-row';
-    const textClass = (!a.recurring && a.completed) ? ' done' : '';
     row.innerHTML = `
-      <div class="activity-row-text${textClass}">${escHtml(a.text)}</div>
+      <div class="activity-row-text">${escHtml(a.text)}</div>
       <button class="btn-recurring${a.recurring ? ' on' : ''}" data-id="${escHtml(a.id)}">${a.recurring ? 'recurring' : 'one-time'}</button>
       <button class="btn-delete" title="delete" data-id="${escHtml(a.id)}">×</button>
     `;
