@@ -214,7 +214,8 @@ header {
 }
 .win-card:hover .btn-delete,
 .habit-row:hover .btn-delete,
-.reminder-row:hover .btn-delete { opacity: 1; }
+.reminder-row:hover .btn-delete,
+.activity-row:hover .btn-delete { opacity: 1; }
 .btn-delete:hover { color: var(--accent-hover); }
 
 /* ── Empty state ─────────────────────────────────────── */
@@ -358,6 +359,148 @@ header {
   word-break: break-word;
   line-height: 1.4;
 }
+
+/* ── Bored tab ───────────────────────────────────────── */
+.bored-intro {
+  text-align: center;
+  padding: 40px 0 32px;
+}
+.bored-heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 18px;
+}
+.btn-im-bored {
+  padding: 11px 32px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-im-bored:hover { background: var(--accent-hover); }
+
+.activity-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-blush);
+  border-radius: 16px;
+  padding: 22px 20px 16px;
+  margin-bottom: 14px;
+  animation: slideIn 0.2s ease;
+}
+.activity-text {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  text-transform: lowercase;
+  line-height: 1.45;
+  margin-bottom: 16px;
+}
+.activity-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn-complete {
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-complete:hover { background: var(--accent-hover); }
+.btn-reroll {
+  padding: 8px 16px;
+  background: none;
+  color: var(--text-muted);
+  border: 1.5px solid var(--border-blush);
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-reroll:hover { border-color: var(--accent); color: var(--accent); }
+
+.customize-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 0;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.15s;
+}
+.customize-toggle:hover { color: var(--accent); }
+.customize-toggle .arrow { display: inline-block; transition: transform 0.2s; }
+.customize-toggle.open .arrow { transform: rotate(180deg); }
+
+.customize-panel { display: none; }
+.customize-panel.open { display: block; }
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  transition: border-color 0.15s;
+}
+.activity-row:hover { border-color: var(--border-blush); }
+.activity-row-text {
+  flex: 1;
+  font-size: 0.83rem;
+  color: var(--text-plum);
+  text-transform: lowercase;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-row-text.done {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.btn-recurring {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-blush);
+  background: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.btn-recurring.on {
+  background: var(--ring-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 </style>
 </head>
 <body>
@@ -371,6 +514,7 @@ header {
     <button class="tab-btn active" data-tab="wins" role="tab" aria-selected="true">wins</button>
     <button class="tab-btn" data-tab="habits" role="tab" aria-selected="false">habits</button>
     <button class="tab-btn" data-tab="reminders" role="tab" aria-selected="false">reminders</button>
+    <button class="tab-btn" data-tab="bored" role="tab" aria-selected="false">bored?</button>
   </nav>
 
   <!-- ── WINS PANEL ── -->
@@ -427,6 +571,29 @@ header {
       <button class="btn-primary btn-add" id="btn-add-reminder" title="add reminder">+</button>
     </div>
     <div id="reminders-list"></div>
+  </section>
+
+  <!-- ── BORED PANEL ── -->
+  <section id="panel-bored" class="panel" role="tabpanel">
+    <div id="bored-main"></div>
+    <button class="customize-toggle" id="btn-customize-toggle">
+      customize <span class="arrow">↓</span>
+    </button>
+    <div class="customize-panel" id="customize-panel">
+      <div class="input-row">
+        <input
+          id="activity-input"
+          class="text-input"
+          type="text"
+          placeholder="add an activity"
+          maxlength="100"
+          autocomplete="off"
+          autocorrect="off"
+        >
+        <button class="btn-primary btn-add" id="btn-add-activity" title="add">+</button>
+      </div>
+      <div id="activity-list"></div>
+    </div>
   </section>
 </div>
 
@@ -491,10 +658,38 @@ function loadReminders() {
 }
 function saveReminders(arr) { localStorage.setItem('sw_reminders', JSON.stringify(arr)); }
 
+const DEFAULT_ACTIVITIES = [
+  { id: 'da1', text: 'go for a walk', recurring: true, completed: false },
+  { id: 'da2', text: 'make a cup of tea', recurring: true, completed: false },
+  { id: 'da3', text: 'sketch something', recurring: true, completed: false },
+  { id: 'da4', text: 'read for 10 minutes', recurring: true, completed: false },
+  { id: 'da5', text: 'do 10 push-ups', recurring: true, completed: false },
+  { id: 'da6', text: 'tidy one small area', recurring: true, completed: false },
+  { id: 'da7', text: 'write in a journal', recurring: true, completed: false },
+  { id: 'da8', text: 'stretch for 5 minutes', recurring: true, completed: false },
+  { id: 'da9', text: 'doodle something', recurring: true, completed: false },
+  { id: 'da10', text: 'learn one new word', recurring: true, completed: false },
+];
+
+function loadActivities() {
+  try {
+    const stored = localStorage.getItem('nb_activities');
+    if (stored === null) {
+      const defaults = DEFAULT_ACTIVITIES.map(a => ({ ...a }));
+      localStorage.setItem('nb_activities', JSON.stringify(defaults));
+      return defaults;
+    }
+    return JSON.parse(stored);
+  } catch { return []; }
+}
+function saveActivities(arr) { localStorage.setItem('nb_activities', JSON.stringify(arr)); }
+
 // ── State ────────────────────────────────────────────────────────────────
 let wins = loadWins();
 let habits = loadHabits();
 let reminders = loadReminders();
+let activities = loadActivities();
+let currentActivityId = null;
 
 // ── Wins feed ────────────────────────────────────────────────────────────
 function renderWins() {
@@ -759,6 +954,135 @@ function addReminder() {
   renderReminders();
 }
 
+// ── Bored tab ────────────────────────────────────────────────────────────
+function getAvailable() {
+  return activities.filter(a => a.recurring || !a.completed);
+}
+
+function renderBored() {
+  const main = document.getElementById('bored-main');
+
+  // Validate current activity still available
+  if (currentActivityId) {
+    const a = activities.find(a => a.id === currentActivityId);
+    if (!a || (!a.recurring && a.completed)) currentActivityId = null;
+  }
+
+  if (!currentActivityId) {
+    const pool = getAvailable();
+    if (pool.length === 0) {
+      main.innerHTML = `<div class="empty-state">
+        <span class="empty-glyph">◌</span>
+        <span class="empty-text">no activities left — add more in customize</span>
+      </div>`;
+    } else {
+      main.innerHTML = `<div class="bored-intro">
+        <div class="bored-heading">bored?</div>
+        <button class="btn-im-bored" id="btn-im-bored">i'm bored</button>
+      </div>`;
+      document.getElementById('btn-im-bored').addEventListener('click', () => {
+        const pool = getAvailable();
+        currentActivityId = pool[Math.floor(Math.random() * pool.length)].id;
+        renderBored();
+      });
+    }
+    return;
+  }
+
+  const activity = activities.find(a => a.id === currentActivityId);
+  if (!activity) { currentActivityId = null; renderBored(); return; }
+
+  main.innerHTML = `
+    <div class="activity-card">
+      <div class="activity-text">${escHtml(activity.text)}</div>
+      <div class="activity-actions">
+        <button class="btn-complete" id="btn-complete">complete ✓</button>
+        <button class="btn-reroll" id="btn-reroll">reroll</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-complete').addEventListener('click', () => {
+    if (!activity.recurring) {
+      const idx = activities.findIndex(a => a.id === currentActivityId);
+      if (idx !== -1) { activities[idx].completed = true; saveActivities(activities); }
+    }
+    currentActivityId = null;
+    renderBored();
+    renderActivityList();
+  });
+
+  document.getElementById('btn-reroll').addEventListener('click', () => {
+    const pool = getAvailable().filter(a => a.id !== currentActivityId);
+    if (!pool.length) return;
+    currentActivityId = pool[Math.floor(Math.random() * pool.length)].id;
+    renderBored();
+  });
+}
+
+function renderActivityList() {
+  const list = document.getElementById('activity-list');
+  if (!list) return;
+  if (activities.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="padding:24px 0 12px">
+      <span class="empty-text">no activities yet</span>
+    </div>`;
+    return;
+  }
+  list.innerHTML = '';
+  activities.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'activity-row';
+    const textClass = (!a.recurring && a.completed) ? ' done' : '';
+    row.innerHTML = `
+      <div class="activity-row-text${textClass}">${escHtml(a.text)}</div>
+      <button class="btn-recurring${a.recurring ? ' on' : ''}" data-id="${escHtml(a.id)}">${a.recurring ? 'recurring' : 'one-time'}</button>
+      <button class="btn-delete" title="delete" data-id="${escHtml(a.id)}">×</button>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('.btn-recurring').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      const idx = activities.findIndex(a => a.id === id);
+      if (idx === -1) return;
+      activities[idx].recurring = !activities[idx].recurring;
+      if (activities[idx].recurring) activities[idx].completed = false;
+      saveActivities(activities);
+      renderActivityList();
+      renderBored();
+    });
+  });
+
+  list.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      if (currentActivityId === id) currentActivityId = null;
+      activities = activities.filter(a => a.id !== id);
+      saveActivities(activities);
+      renderBored();
+      renderActivityList();
+    });
+  });
+}
+
+function addActivity() {
+  const input = document.getElementById('activity-input');
+  const text = input.value.trim().toLowerCase();
+  if (!text) return;
+  if (activities.some(a => a.text === text)) {
+    input.classList.add('flash-error');
+    setTimeout(() => input.classList.remove('flash-error'), 500);
+    return;
+  }
+  activities.push({ id: uid(), text, recurring: true, completed: false });
+  saveActivities(activities);
+  input.value = '';
+  renderActivityList();
+  renderBored();
+}
+
 // ── Tabs ─────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -790,10 +1114,23 @@ document.getElementById('reminder-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') addReminder();
 });
 
+document.getElementById('btn-customize-toggle').addEventListener('click', () => {
+  const btn = document.getElementById('btn-customize-toggle');
+  const panel = document.getElementById('customize-panel');
+  btn.classList.toggle('open');
+  panel.classList.toggle('open');
+});
+document.getElementById('btn-add-activity').addEventListener('click', addActivity);
+document.getElementById('activity-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addActivity();
+});
+
 // ── Init ─────────────────────────────────────────────────────────────────
 renderWins();
 renderHabits();
 renderReminders();
+renderBored();
+renderActivityList();
 </script>
 </body>
 </html>
