@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>small wins</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --accent:       #d4849a;
+  --accent-hover: #bf6f88;
+  --bg:           #f9f9f9;
+  --bg-card:      #fff;
+  --text-dark:    #3d1a28;
+  --text-plum:    #5c2d44;
+  --text-muted:   #c084a0;
+  --text-gray:    #999;
+  --text-light:   #bbb;
+  --border:       #e5e5e5;
+  --border-light: #f0f0f0;
+  --border-blush: #edccd6;
+  --ring-bg:      #f5d5e0;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text-plum);
+  min-height: 100vh;
+  padding: 0 0 60px;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 38px 0 22px;
+}
+.app-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  letter-spacing: -0.02em;
+}
+.app-title .glyph { color: var(--accent); }
+
+/* ── Layout wrapper ─────────────────────────────────── */
+.container {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── Tab nav ─────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+.tab-btn {
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-gray);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.tab-btn:hover { border-color: var(--border-blush); color: var(--text-plum); }
+.tab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Panel ───────────────────────────────────────────── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Input row ───────────────────────────────────────── */
+.input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  align-items: center;
+}
+.text-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  outline: none;
+  transition: border-color 0.15s;
+  text-transform: lowercase;
+}
+.text-input::placeholder { color: var(--text-light); }
+.text-input:focus { border-color: var(--accent); }
+.text-input.flash-error {
+  border-color: var(--accent) !important;
+  animation: flashBorder 0.4s ease;
+}
+
+@keyframes flashBorder {
+  0%   { border-color: var(--accent); }
+  50%  { border-color: #ff8fa0; }
+  100% { border-color: var(--accent); }
+}
+
+.btn-primary {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-add {
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ── Section label ───────────────────────────────────── */
+.day-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 20px 0 10px;
+}
+.day-label:first-child { margin-top: 0; }
+
+/* ── Win card ────────────────────────────────────────── */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.win-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  margin-bottom: 7px;
+  transition: border-color 0.15s;
+  animation: slideIn 0.2s ease;
+  position: relative;
+}
+.win-card:hover { border-color: var(--border-blush); }
+.win-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+.win-body { flex: 1; min-width: 0; }
+.win-note {
+  font-size: 0.855rem;
+  font-weight: 400;
+  color: var(--text-plum);
+  line-height: 1.4;
+  word-break: break-word;
+  text-transform: lowercase;
+}
+.win-time {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  flex-shrink: 0;
+  margin-top: 3px;
+  padding-top: 2px;
+}
+.btn-delete {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.win-card:hover .btn-delete,
+.habit-row:hover .btn-delete { opacity: 1; }
+.btn-delete:hover { color: var(--accent-hover); }
+
+/* ── Empty state ─────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 52px 0 32px;
+  color: var(--text-muted);
+}
+.empty-glyph {
+  font-size: 1.6rem;
+  display: block;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+.empty-text {
+  font-size: 0.82rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* ── Habits tab ──────────────────────────────────────── */
+.habits-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.habits-progress {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-gray);
+}
+
+.habit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  margin-bottom: 7px;
+  transition: border-color 0.15s;
+  animation: slideIn 0.2s ease;
+  position: relative;
+}
+.habit-row:hover { border-color: var(--border-blush); }
+
+.check-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border-blush);
+  background: var(--ring-bg);
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.check-circle.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.check-circle.checked::after {
+  content: '';
+  width: 8px;
+  height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+  display: block;
+}
+.check-circle:hover:not(.checked) { border-color: var(--accent); }
+
+.habit-body { flex: 1; min-width: 0; }
+.habit-name {
+  font-size: 0.855rem;
+  font-weight: 400;
+  color: var(--text-plum);
+  text-transform: lowercase;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.habit-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.dot.filled { background: var(--accent); }
+.dot.past { opacity: 0.5; }
+
+.streak-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-light);
+  flex-shrink: 0;
+  min-width: 24px;
+  text-align: right;
+}
+.streak-badge.lit { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <span class="app-title">small wins <span class="glyph">✦</span></span>
+  </header>
+
+  <!-- Tab nav -->
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="wins" role="tab" aria-selected="true">wins</button>
+    <button class="tab-btn" data-tab="habits" role="tab" aria-selected="false">habits</button>
+  </nav>
+
+  <!-- ── WINS PANEL ── -->
+  <section id="panel-wins" class="panel active" role="tabpanel">
+    <div class="input-row">
+      <input
+        id="win-input"
+        class="text-input"
+        type="text"
+        placeholder="what did you do today?"
+        maxlength="120"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="true"
+      >
+      <button class="btn-primary" id="btn-log">log it</button>
+    </div>
+    <div id="wins-feed"></div>
+  </section>
+
+  <!-- ── HABITS PANEL ── -->
+  <section id="panel-habits" class="panel" role="tabpanel">
+    <div class="input-row">
+      <input
+        id="habit-input"
+        class="text-input"
+        type="text"
+        placeholder="new habit name"
+        maxlength="80"
+        autocomplete="off"
+        autocorrect="off"
+      >
+      <button class="btn-primary btn-add" id="btn-add-habit" title="add habit">+</button>
+    </div>
+    <div class="habits-header">
+      <span class="day-label" style="margin:0">today</span>
+      <span class="habits-progress" id="habits-progress"></span>
+    </div>
+    <div id="habits-list"></div>
+  </section>
+</div>
+
+<script>
+// ── Utility ─────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function isoFromEpoch(ms) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatTime(ms) {
+  const d = new Date(ms);
+  let h = d.getHours(), m = d.getMinutes(), ampm = 'am';
+  if (h >= 12) { ampm = 'pm'; if (h > 12) h -= 12; }
+  if (h === 0) h = 12;
+  return `${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function dayLabel(iso) {
+  const today = todayISO();
+  const d = new Date(iso + 'T00:00:00');
+  const yest = new Date(d);
+  const todayDate = new Date(today + 'T00:00:00');
+  const diff = Math.round((todayDate - d) / 86400000);
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  return `${months[d.getMonth()]} ${d.getDate()}`;
+}
+
+// ── Storage ──────────────────────────────────────────────────────────────
+function loadWins() {
+  try { return JSON.parse(localStorage.getItem('sw_wins') || '[]'); } catch { return []; }
+}
+function saveWins(arr) { localStorage.setItem('sw_wins', JSON.stringify(arr)); }
+
+function loadHabits() {
+  try { return JSON.parse(localStorage.getItem('sw_habits') || '[]'); } catch { return []; }
+}
+function saveHabits(arr) { localStorage.setItem('sw_habits', JSON.stringify(arr)); }
+
+// ── State ────────────────────────────────────────────────────────────────
+let wins = loadWins();
+let habits = loadHabits();
+
+// ── Wins feed ────────────────────────────────────────────────────────────
+function renderWins() {
+  const feed = document.getElementById('wins-feed');
+  if (wins.length === 0) {
+    feed.innerHTML = `<div class="empty-state">
+      <span class="empty-glyph">✦</span>
+      <span class="empty-text">no wins logged yet — start small</span>
+    </div>`;
+    return;
+  }
+
+  // Group by ISO date
+  const groups = {};
+  wins.forEach(w => {
+    const iso = isoFromEpoch(w.ts);
+    if (!groups[iso]) groups[iso] = [];
+    groups[iso].push(w);
+  });
+
+  // Sort dates newest first
+  const dates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  feed.innerHTML = '';
+  dates.forEach(iso => {
+    const label = document.createElement('div');
+    label.className = 'day-label';
+    label.textContent = dayLabel(iso);
+    feed.appendChild(label);
+
+    // Sort wins newest first within day
+    groups[iso].sort((a, b) => b.ts - a.ts).forEach(w => {
+      const card = document.createElement('div');
+      card.className = 'win-card';
+      card.dataset.id = w.id;
+
+      card.innerHTML = `
+        <div class="win-pip"></div>
+        <div class="win-body"><div class="win-note">${escHtml(w.note)}</div></div>
+        <span class="win-time">${formatTime(w.ts)}</span>
+        <button class="btn-delete" title="delete" data-id="${escHtml(w.id)}">×</button>
+      `;
+      feed.appendChild(card);
+    });
+  });
+
+  // Delete buttons
+  feed.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      wins = wins.filter(w => w.id !== id);
+      saveWins(wins);
+      renderWins();
+    });
+  });
+}
+
+// ── Log a win ────────────────────────────────────────────────────────────
+function logWin() {
+  const input = document.getElementById('win-input');
+  const note = input.value.trim().toLowerCase();
+
+  if (!note) {
+    input.classList.add('flash-error');
+    input.focus();
+    setTimeout(() => input.classList.remove('flash-error'), 500);
+    return;
+  }
+
+  wins.unshift({ id: uid(), note, ts: Date.now() });
+  saveWins(wins);
+  input.value = '';
+  renderWins();
+}
+
+// ── Habit helpers ────────────────────────────────────────────────────────
+function getStreak(habit) {
+  const today = todayISO();
+  const completions = new Set(habit.completions);
+
+  // If today is done, count from today
+  // If today is not done, count from yesterday (preserve streak)
+  let cursor;
+  if (completions.has(today)) {
+    cursor = new Date(today + 'T00:00:00');
+  } else {
+    const yest = new Date(today + 'T00:00:00');
+    yest.setDate(yest.getDate() - 1);
+    const yestISO = isoFromEpoch(yest.getTime());
+    if (!completions.has(yestISO)) return 0;
+    cursor = yest;
+  }
+
+  let streak = 0;
+  while (true) {
+    const iso = isoFromEpoch(cursor.getTime());
+    if (!completions.has(iso)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function getLast7Days() {
+  const days = [];
+  const today = new Date(todayISO() + 'T00:00:00');
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(isoFromEpoch(d.getTime()));
+  }
+  return days; // oldest → newest (index 6 = today)
+}
+
+// ── Render habits ────────────────────────────────────────────────────────
+function renderHabits() {
+  const list = document.getElementById('habits-list');
+  const progress = document.getElementById('habits-progress');
+  const today = todayISO();
+
+  if (habits.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <span class="empty-glyph">◦</span>
+      <span class="empty-text">add a habit to start tracking</span>
+    </div>`;
+    progress.textContent = '';
+    return;
+  }
+
+  const doneCount = habits.filter(h => h.completions.includes(today)).length;
+  progress.textContent = `${doneCount} / ${habits.length}`;
+
+  const last7 = getLast7Days();
+
+  list.innerHTML = '';
+  habits.forEach(habit => {
+    const isChecked = habit.completions.includes(today);
+    const streak = getStreak(habit);
+    const row = document.createElement('div');
+    row.className = 'habit-row';
+    row.dataset.id = habit.id;
+
+    const dotsHTML = last7.map((iso, i) => {
+      const filled = habit.completions.includes(iso);
+      const isToday = (i === 6);
+      let cls = 'dot';
+      if (filled) cls += ' filled';
+      if (!isToday) cls += ' past';
+      return `<span class="${cls}"></span>`;
+    }).join('');
+
+    const streakLit = streak >= 2 ? ' lit' : '';
+
+    row.innerHTML = `
+      <div class="check-circle${isChecked ? ' checked' : ''}" data-id="${escHtml(habit.id)}"></div>
+      <div class="habit-body">
+        <div class="habit-name">${escHtml(habit.name)}</div>
+        <div class="habit-dots">${dotsHTML}</div>
+      </div>
+      <span class="streak-badge${streakLit}">${streak >= 1 ? streak + 'd' : ''}</span>
+      <button class="btn-delete" title="delete" data-id="${escHtml(habit.id)}">×</button>
+    `;
+    list.appendChild(row);
+  });
+
+  // Toggle check
+  list.querySelectorAll('.check-circle').forEach(circle => {
+    circle.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      const habit = habits.find(h => h.id === id);
+      if (!habit) return;
+      if (habit.completions.includes(today)) {
+        habit.completions = habit.completions.filter(d => d !== today);
+      } else {
+        habit.completions.push(today);
+      }
+      saveHabits(habits);
+      renderHabits();
+    });
+  });
+
+  // Delete habit
+  list.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      habits = habits.filter(h => h.id !== id);
+      saveHabits(habits);
+      renderHabits();
+    });
+  });
+}
+
+// ── Add habit ────────────────────────────────────────────────────────────
+function addHabit() {
+  const input = document.getElementById('habit-input');
+  const name = input.value.trim().toLowerCase();
+  if (!name) return;
+
+  // Duplicate check
+  if (habits.some(h => h.name === name)) {
+    input.classList.add('flash-error');
+    setTimeout(() => input.classList.remove('flash-error'), 500);
+    return;
+  }
+
+  const habit = {
+    id: uid(),
+    name,
+    completions: [],
+    createdAt: Date.now()
+  };
+  habits.push(habit);
+  saveHabits(habits);
+  input.value = '';
+  renderHabits();
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ── Event listeners ───────────────────────────────────────────────────────
+document.getElementById('btn-log').addEventListener('click', logWin);
+document.getElementById('win-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') logWin();
+});
+
+document.getElementById('btn-add-habit').addEventListener('click', addHabit);
+document.getElementById('habit-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addHabit();
+});
+
+// ── Init ─────────────────────────────────────────────────────────────────
+renderWins();
+renderHabits();
+</script>
+</body>
+</html>
