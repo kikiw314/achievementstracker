@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -548,12 +549,72 @@ header {
   font-weight: 500;
   flex-shrink: 0;
 }
+
+/* ── Auth area ───────────────────────────────────────── */
+#auth-area {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#sync-status {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.btn-google-sign-in {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-gray);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-google-sign-in:hover { border-color: var(--border-blush); color: var(--text-plum); }
+#user-info {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+#user-name {
+  font-size: 0.72rem;
+  color: var(--text-gray);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-sign-out {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: none;
+  color: var(--text-light);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-sign-out:hover { border-color: var(--border-blush); color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
     <span class="app-title">notebook <span class="glyph">✦</span></span>
+    <div id="auth-area">
+      <span id="sync-status"></span>
+      <button class="btn-google-sign-in" id="btn-sign-in">sign in with google</button>
+      <div id="user-info">
+        <span id="user-name"></span>
+        <button class="btn-sign-out" id="btn-sign-out">sign out</button>
+      </div>
+    </div>
   </header>
 
   <!-- Tab nav -->
@@ -707,17 +768,20 @@ function dayLabel(iso) {
 function loadWins() {
   try { return JSON.parse(localStorage.getItem('sw_wins') || '[]'); } catch { return []; }
 }
-function saveWins(arr) { localStorage.setItem('sw_wins', JSON.stringify(arr)); }
+function saveWinsLocal(arr) { localStorage.setItem('sw_wins', JSON.stringify(arr)); }
+function saveWins(arr) { saveWinsLocal(arr); scheduleDriveSync(); }
 
 function loadHabits() {
   try { return JSON.parse(localStorage.getItem('sw_habits') || '[]'); } catch { return []; }
 }
-function saveHabits(arr) { localStorage.setItem('sw_habits', JSON.stringify(arr)); }
+function saveHabitsLocal(arr) { localStorage.setItem('sw_habits', JSON.stringify(arr)); }
+function saveHabits(arr) { saveHabitsLocal(arr); scheduleDriveSync(); }
 
 function loadReminders() {
   try { return JSON.parse(localStorage.getItem('sw_reminders') || '[]'); } catch { return []; }
 }
-function saveReminders(arr) { localStorage.setItem('sw_reminders', JSON.stringify(arr)); }
+function saveRemindersLocal(arr) { localStorage.setItem('sw_reminders', JSON.stringify(arr)); }
+function saveReminders(arr) { saveRemindersLocal(arr); scheduleDriveSync(); }
 
 const DEFAULT_ACTIVITIES = [
   { id: 'da1',  text: 'go for a walk',        recurring: true, completed: false, duration: 30 },
@@ -743,7 +807,153 @@ function loadActivities() {
     return JSON.parse(stored);
   } catch { return []; }
 }
-function saveActivities(arr) { localStorage.setItem('nb_activities', JSON.stringify(arr)); }
+function saveActivitiesLocal(arr) { localStorage.setItem('nb_activities', JSON.stringify(arr)); }
+function saveActivities(arr) { saveActivitiesLocal(arr); scheduleDriveSync(); }
+
+// ── Google Auth & Drive Sync ─────────────────────────────────────────────
+const GIS_CLIENT_ID = '708733339406-5clkirf9o0g9nk4lolmrdnrml6rledrf.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE_NAME = 'notebook_data.json';
+
+let accessToken = null;
+let driveFileId = null;
+let syncTimer = null;
+let tokenClient = null;
+
+function initGoogleAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GIS_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: handleTokenResponse,
+  });
+  // Silent sign-in if previously authenticated
+  if (localStorage.getItem('nb_google_signin')) {
+    tokenClient.requestAccessToken({ prompt: '' });
+  }
+}
+
+async function handleTokenResponse(resp) {
+  if (resp.error) {
+    localStorage.removeItem('nb_google_signin');
+    updateAuthUI(false);
+    return;
+  }
+  accessToken = resp.access_token;
+  localStorage.setItem('nb_google_signin', '1');
+  // Fetch user info for display
+  try {
+    const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }).then(r => r.json());
+    document.getElementById('user-name').textContent = info.email || info.name || '';
+  } catch {}
+  updateAuthUI(true);
+  await loadFromDrive();
+}
+
+function updateAuthUI(signedIn) {
+  document.getElementById('btn-sign-in').style.display = signedIn ? 'none' : '';
+  document.getElementById('user-info').style.display = signedIn ? 'flex' : 'none';
+}
+
+function setSyncStatus(msg) {
+  const el = document.getElementById('sync-status');
+  if (el) el.textContent = msg;
+}
+
+// Drive helpers
+async function driveRequest(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: { Authorization: `Bearer ${accessToken}`, ...(opts.headers || {}) }
+  });
+  if (res.status === 401) {
+    // Token expired — request new one silently
+    tokenClient.requestAccessToken({ prompt: '' });
+    throw new Error('token_expired');
+  }
+  return res;
+}
+
+async function driveFindFile() {
+  const res = await driveRequest(
+    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27${DRIVE_FILE_NAME}%27&fields=files(id)`
+  );
+  const data = await res.json();
+  return data.files?.[0]?.id || null;
+}
+
+async function driveReadFile(fileId) {
+  const res = await driveRequest(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
+  );
+  return await res.json();
+}
+
+async function driveWriteFile(content) {
+  const body = JSON.stringify(content);
+  if (!driveFileId) {
+    // Create new appDataFolder file via multipart upload
+    const boundary = 'nb_mp_boundary';
+    const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] });
+    const mp = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
+    const res = await driveRequest(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body: mp }
+    );
+    const data = await res.json();
+    driveFileId = data.id;
+  } else {
+    await driveRequest(
+      `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body }
+    );
+  }
+}
+
+async function loadFromDrive() {
+  setSyncStatus('syncing...');
+  try {
+    driveFileId = await driveFindFile();
+    if (driveFileId) {
+      // Drive data wins — load it into state and localStorage
+      const data = await driveReadFile(driveFileId);
+      if (Array.isArray(data.wins))       { wins = data.wins;        saveWinsLocal(wins); }
+      if (Array.isArray(data.habits))     { habits = data.habits;    saveHabitsLocal(habits); }
+      if (Array.isArray(data.reminders))  { reminders = data.reminders; saveRemindersLocal(reminders); }
+      if (Array.isArray(data.activities)) { activities = data.activities; saveActivitiesLocal(activities); }
+      renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList();
+    } else {
+      // First sign-in: push existing local data up to Drive
+      await driveWriteFile({ wins, habits, reminders, activities });
+    }
+    setSyncStatus('✓ synced');
+    setTimeout(() => setSyncStatus(''), 2500);
+  } catch (e) {
+    if (e.message !== 'token_expired') {
+      console.error('Drive sync error:', e);
+      setSyncStatus('sync error');
+    }
+  }
+}
+
+function scheduleDriveSync() {
+  if (!accessToken) return;
+  setSyncStatus('saving...');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try {
+      await driveWriteFile({ wins, habits, reminders, activities });
+      setSyncStatus('✓ saved');
+      setTimeout(() => setSyncStatus(''), 2500);
+    } catch (e) {
+      if (e.message !== 'token_expired') {
+        console.error('Drive sync error:', e);
+        setSyncStatus('sync error');
+      }
+    }
+  }, 1500);
+}
 
 // ── State ────────────────────────────────────────────────────────────────
 let wins = loadWins();
@@ -1220,12 +1430,36 @@ document.getElementById('activity-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') addActivity();
 });
 
+// ── Auth button listeners ─────────────────────────────────────────────────
+document.getElementById('btn-sign-in').addEventListener('click', () => {
+  if (!tokenClient) return;
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+});
+document.getElementById('btn-sign-out').addEventListener('click', () => {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null;
+  driveFileId = null;
+  localStorage.removeItem('nb_google_signin');
+  updateAuthUI(false);
+  setSyncStatus('');
+});
+
 // ── Init ─────────────────────────────────────────────────────────────────
 renderWins();
 renderHabits();
 renderReminders();
 renderBored();
 renderActivityList();
+
+// Init Google auth once GIS library is ready
+function tryInitAuth() {
+  if (window.google?.accounts?.oauth2) {
+    initGoogleAuth();
+  } else {
+    setTimeout(tryInitAuth, 100);
+  }
+}
+tryInitAuth();
 </script>
 </body>
 </html>
