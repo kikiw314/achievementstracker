@@ -218,6 +218,33 @@ header {
 .reminder-row:hover .btn-delete,
 .activity-row:hover .btn-delete { opacity: 1; }
 .btn-delete:hover { color: var(--accent-hover); }
+.btn-edit {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.activity-row:hover .btn-edit { opacity: 1; }
+.btn-edit:hover { color: var(--accent-hover); }
+.activity-row-input {
+  flex: 1;
+  font-size: 0.83rem;
+  color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  min-width: 0;
+  text-transform: lowercase;
+}
 
 /* ── Empty state ─────────────────────────────────────── */
 .empty-state {
@@ -566,7 +593,7 @@ header {
 .icon-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-gray);
   font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
@@ -583,7 +610,7 @@ header {
   padding: 7px 16px;
   border-radius: 999px;
   border: 1.5px solid var(--border-blush);
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-plum);
   font-family: 'DM Sans', sans-serif;
   font-size: 0.8rem;
@@ -593,10 +620,12 @@ header {
   white-space: nowrap;
 }
 .btn-google-sign-in:hover { border-color: var(--accent); color: var(--accent); }
+.btn-google-sign-in.hidden { display: none; }
 
 /* User chip */
-#user-chip-wrap { position: relative; }
-#user-chip {
+.user-chip-wrap { position: relative; }
+.user-chip {
+  display: none;
   align-items: center;
   gap: 7px;
   padding: 4px 10px 4px 4px;
@@ -604,29 +633,31 @@ header {
   background: var(--ring-bg);
   border: 1.5px solid var(--border-blush);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: all 0.15s;
+  user-select: none;
 }
-#user-chip:hover { border-color: var(--accent); }
-.chip-avatar {
+.user-chip:hover { border-color: var(--accent); }
+.user-chip.visible { display: flex; }
+.user-avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
   background: var(--accent);
-  flex-shrink: 0;
-  overflow: hidden;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #fff;
+  flex-shrink: 0;
   text-transform: uppercase;
+  overflow: hidden;
 }
-.chip-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.chip-name {
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.user-name {
   font-size: 0.78rem;
-  font-weight: 500;
   color: var(--text-plum);
+  font-weight: 500;
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -638,56 +669,62 @@ header {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  background: #fff;
+  background: var(--bg-card);
   border: 1.5px solid var(--border-light);
   border-radius: 14px;
   padding: 14px 16px 12px;
   box-shadow: 0 8px 28px rgba(61,26,40,0.13);
+  z-index: 300;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
   min-width: 170px;
-  z-index: 200;
-  animation: popoutIn 0.15s ease;
+  white-space: nowrap;
 }
-@keyframes popoutIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.popout-email {
+.signout-popout.open { opacity: 1; visibility: visible; transform: translateY(0); }
+.signout-popout-email {
   font-size: 0.75rem;
   color: var(--text-gray);
+  margin-bottom: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-bottom: 10px;
 }
-.popout-label {
+.signout-popout-label {
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-plum);
   margin-bottom: 10px;
 }
-.popout-btns { display: flex; gap: 6px; }
-.btn-popout-cancel, .btn-popout-signout {
+.signout-popout-actions { display: flex; gap: 6px; }
+.btn-pop-cancel {
   flex: 1;
   padding: 6px 10px;
   border-radius: 8px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.btn-popout-cancel {
   border: 1.5px solid var(--border);
   background: none;
   color: var(--text-gray);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
 }
-.btn-popout-cancel:hover { border-color: var(--border-blush); color: var(--text-plum); }
-.btn-popout-signout {
+.btn-pop-cancel:hover { border-color: var(--border-blush); color: var(--text-plum); }
+.btn-pop-signout {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: none;
   background: var(--accent);
   color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s;
 }
-.btn-popout-signout:hover { background: var(--accent-hover); }
+.btn-pop-signout:hover { background: var(--accent-hover); }
 
 /* Settings modal */
 .modal {
@@ -771,6 +808,33 @@ header {
   text-align: left;
 }
 .modal-signout-link:hover { color: var(--accent); }
+.btn-settings-signin {
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text-gray);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-settings-signin:hover { border-color: var(--accent); color: var(--accent); }
+.theme-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.theme-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  outline: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.12s;
+  flex-shrink: 0;
+}
+.theme-swatch:hover { transform: scale(1.15); }
+.theme-swatch.active { box-shadow: 0 0 0 2.5px #fff, 0 0 0 5px var(--text-dark); }
 </style>
 </head>
 <body>
@@ -779,20 +843,20 @@ header {
     <span class="app-title">notebook <span class="glyph">✦</span></span>
     <div id="auth-area">
       <span id="header-date"></span>
-      <button id="btn-sync" class="icon-btn" title="sync" style="display:none">↻</button>
+      <button id="btn-sync" class="icon-btn" title="sync">↻</button>
       <button id="btn-settings" class="icon-btn" title="settings">⚙</button>
       <button id="btn-sign-in" class="btn-google-sign-in">sign in with google</button>
-      <div id="user-chip-wrap">
-        <div id="user-chip" style="display:none">
-          <div class="chip-avatar" id="chip-avatar"></div>
-          <span class="chip-name" id="chip-name"></span>
+      <div class="user-chip-wrap" id="user-chip-wrap">
+        <div class="user-chip" id="user-chip">
+          <div class="user-avatar" id="user-avatar"></div>
+          <span class="user-name" id="user-name"></span>
         </div>
-        <div id="signout-popout" class="signout-popout" style="display:none">
-          <div id="popout-email" class="popout-email"></div>
-          <div class="popout-label">sign out?</div>
-          <div class="popout-btns">
-            <button id="btn-cancel-signout" class="btn-popout-cancel">cancel</button>
-            <button id="btn-confirm-signout" class="btn-popout-signout">sign out</button>
+        <div class="signout-popout" id="signout-popout">
+          <div class="signout-popout-email" id="signout-email"></div>
+          <div class="signout-popout-label">sign out?</div>
+          <div class="signout-popout-actions">
+            <button class="btn-pop-cancel" id="btn-cancel-signout">cancel</button>
+            <button class="btn-pop-signout" id="btn-confirm-signout">sign out</button>
           </div>
         </div>
       </div>
@@ -910,6 +974,17 @@ header {
     </div>
     <div class="modal-body">
       <div>
+        <div class="modal-section-label">theme</div>
+        <div class="theme-swatches" id="theme-swatches">
+          <button class="theme-swatch" data-theme="rose"     title="rose"     style="background:#d4849a"></button>
+          <button class="theme-swatch" data-theme="lavender" title="lavender" style="background:#9b84c8"></button>
+          <button class="theme-swatch" data-theme="sage"     title="sage"     style="background:#7aaa88"></button>
+          <button class="theme-swatch" data-theme="peach"    title="peach"    style="background:#e09870"></button>
+          <button class="theme-swatch" data-theme="sky"      title="sky"      style="background:#72a8d4"></button>
+          <button class="theme-swatch" data-theme="slate"    title="slate"    style="background:#6b7280"></button>
+        </div>
+      </div>
+      <div>
         <div class="modal-section-label">wins look-back</div>
         <div class="lookback-pills" id="lookback-pills">
           <button class="lookback-pill active" data-days="">all time</button>
@@ -918,9 +993,10 @@ header {
           <button class="lookback-pill" data-days="90">90 days</button>
         </div>
       </div>
-      <div id="settings-account-section" style="display:none">
+      <div id="settings-account-section">
         <div class="modal-section-label">account</div>
-        <button class="modal-signout-link" id="btn-modal-signout">sign out of google</button>
+        <button class="btn-settings-signin" id="btn-settings-signin">sign in with google</button>
+        <button class="modal-signout-link" id="btn-modal-signout" style="display:none">sign out</button>
       </div>
     </div>
   </div>
@@ -1017,9 +1093,33 @@ function loadActivities() {
 function saveActivitiesLocal(arr) { localStorage.setItem('nb_activities', JSON.stringify(arr)); }
 function saveActivities(arr) { saveActivitiesLocal(arr); scheduleDriveSync(); }
 
+// ── Themes ───────────────────────────────────────────────────────────────
+const THEMES = {
+  rose:     { accent:'#d4849a', hover:'#bf6f88', pale:'#f5d5e0', blush:'#edccd6', muted:'#c084a0' },
+  lavender: { accent:'#9b84c8', hover:'#8468b8', pale:'#e8e0f8', blush:'#d5c9ec', muted:'#b09ed8' },
+  sage:     { accent:'#7aaa88', hover:'#5e8f6e', pale:'#d4eddb', blush:'#bedcc6', muted:'#94b89e' },
+  peach:    { accent:'#e09870', hover:'#c87d56', pale:'#fae4d4', blush:'#f4d1bb', muted:'#d4a882' },
+  sky:      { accent:'#72a8d4', hover:'#5090be', pale:'#d0e8f8', blush:'#b9d8ef', muted:'#8abcd8' },
+  slate:    { accent:'#6b7280', hover:'#4b5563', pale:'#e5e7eb', blush:'#c7cad1', muted:'#8c93a0' },
+};
+
+function applyTheme(name) {
+  const t = THEMES[name] || THEMES.rose;
+  const r = document.documentElement;
+  r.style.setProperty('--accent',       t.accent);
+  r.style.setProperty('--accent-hover', t.hover);
+  r.style.setProperty('--ring-bg',      t.pale);
+  r.style.setProperty('--border-blush', t.blush);
+  r.style.setProperty('--text-muted',   t.muted);
+  localStorage.setItem('nb_theme', name);
+  document.querySelectorAll('.theme-swatch').forEach(s =>
+    s.classList.toggle('active', s.dataset.theme === name)
+  );
+}
+
 // ── Google Auth & Drive Sync ─────────────────────────────────────────────
 const GIS_CLIENT_ID = '708733339406-5clkirf9o0g9nk4lolmrdnrml6rledrf.apps.googleusercontent.com';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata email profile';
 const DRIVE_FILE_NAME = 'notebook_data.json';
 
 let accessToken = null;
@@ -1062,30 +1162,30 @@ async function handleTokenResponse(resp) {
 }
 
 function populateChip(info) {
-  const avatar = document.getElementById('chip-avatar');
-  const nameEl = document.getElementById('chip-name');
+  const avatar = document.getElementById('user-avatar');
+  const nameEl = document.getElementById('user-name');
   if (info.picture) {
-    avatar.innerHTML = `<img src="${escHtml(info.picture)}" alt="">`;
+    avatar.innerHTML = `<img src="${escHtml(info.picture)}" alt="" referrerpolicy="no-referrer">`;
   } else {
-    avatar.textContent = (info.name || info.email || '?')[0];
+    avatar.textContent = (info.name || info.email || '')[0]?.toUpperCase() || '';
   }
   nameEl.textContent = (info.name || info.email || '').split(' ')[0];
-  document.getElementById('popout-email').textContent = info.email || '';
+  document.getElementById('signout-email').textContent = info.email || '';
 }
 
 function updateAuthUI(signedIn) {
-  document.getElementById('btn-sign-in').style.display = signedIn ? 'none' : '';
-  const chip = document.getElementById('user-chip');
-  chip.style.display = signedIn ? 'flex' : 'none';
-  document.getElementById('btn-sync').style.display = signedIn ? '' : 'none';
-  document.getElementById('settings-account-section').style.display = signedIn ? '' : 'none';
-  // Restore chip from localStorage if page was refreshed mid-session
-  if (signedIn && !chip.querySelector('img') && !document.getElementById('chip-name').textContent) {
-    populateChip({
-      picture: localStorage.getItem('nb_google_picture') || '',
-      name:    localStorage.getItem('nb_google_name') || '',
-      email:   localStorage.getItem('nb_google_email') || '',
-    });
+  document.getElementById('btn-sign-in').classList.toggle('hidden', signedIn);
+  document.getElementById('user-chip').classList.toggle('visible', signedIn);
+  document.getElementById('btn-settings-signin').style.display = signedIn ? 'none' : '';
+  document.getElementById('btn-modal-signout').style.display   = signedIn ? '' : 'none';
+  if (!signedIn) {
+    document.getElementById('user-avatar').innerHTML = '';
+    document.getElementById('user-name').textContent = '';
+  } else {
+    const picture = localStorage.getItem('nb_google_picture') || '';
+    const name    = localStorage.getItem('nb_google_name') || '';
+    const email   = localStorage.getItem('nb_google_email') || document.getElementById('popout-email').textContent || '';
+    populateChip({ picture, name, email });
   }
 }
 
@@ -1560,9 +1660,46 @@ function renderActivityList() {
       <div class="activity-row-text">${escHtml(a.text)}</div>
       ${durTag}
       <button class="btn-recurring${a.recurring ? ' on' : ''}" data-id="${escHtml(a.id)}">${a.recurring ? 'recurring' : 'one-time'}</button>
+      <button class="btn-edit" title="edit" data-id="${escHtml(a.id)}">✎</button>
       <button class="btn-delete" title="delete" data-id="${escHtml(a.id)}">×</button>
     `;
     list.appendChild(row);
+  });
+
+  list.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.currentTarget.dataset.id;
+      const idx = activities.findIndex(a => a.id === id);
+      if (idx === -1) return;
+      const row = e.currentTarget.closest('.activity-row');
+      const textEl = row.querySelector('.activity-row-text');
+      const currentText = activities[idx].text;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = currentText;
+      input.className = 'activity-row-input';
+      input.maxLength = 100;
+      textEl.replaceWith(input);
+      input.focus();
+      input.select();
+      let saved = false;
+      function save() {
+        if (saved) return;
+        saved = true;
+        const newText = input.value.trim().toLowerCase();
+        if (newText && newText !== currentText) {
+          activities[idx].text = newText;
+          saveActivities(activities);
+          renderBored();
+        }
+        renderActivityList();
+      }
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') save();
+        if (e.key === 'Escape') { saved = true; renderActivityList(); }
+      });
+      input.addEventListener('blur', save);
+    });
   });
 
   list.querySelectorAll('.btn-recurring').forEach(btn => {
@@ -1673,23 +1810,27 @@ document.getElementById('btn-sign-in').addEventListener('click', () => {
 
 document.getElementById('btn-sync').addEventListener('click', () => {
   if (!accessToken) {
-    // Token expired/missing — re-auth then sync
-    tokenClient.requestAccessToken({ prompt: 'select_account' });
+    // Not signed in — just refresh from localStorage
+    wins = loadWins(); habits = loadHabits(); reminders = loadReminders(); activities = loadActivities();
+    const btn = document.getElementById('btn-sync');
+    btn.classList.add('spinning');
+    setTimeout(() => btn.classList.remove('spinning'), 500);
+    renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList();
     return;
   }
   loadFromDrive();
 });
 
-// User chip → toggle sign-out popout
+// User chip → sign in (if not signed in) or toggle sign-out popout
 document.getElementById('user-chip').addEventListener('click', e => {
   e.stopPropagation();
-  const popout = document.getElementById('signout-popout');
-  popout.style.display = popout.style.display === 'none' ? '' : 'none';
+  if (!localStorage.getItem('nb_google_signin')) {
+    if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' });
+    return;
+  }
+  document.getElementById('signout-popout').classList.toggle('open');
 });
-document.getElementById('btn-cancel-signout').addEventListener('click', e => {
-  e.stopPropagation();
-  document.getElementById('signout-popout').style.display = 'none';
-});
+
 
 function doSignOut() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
@@ -1699,18 +1840,27 @@ function doSignOut() {
   localStorage.removeItem('nb_google_email');
   localStorage.removeItem('nb_google_name');
   localStorage.removeItem('nb_google_picture');
-  document.getElementById('signout-popout').style.display = 'none';
+  document.getElementById('signout-popout').classList.remove('open');
   updateAuthUI(false);
 }
+document.getElementById('btn-cancel-signout').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('signout-popout').classList.remove('open');
+});
 document.getElementById('btn-confirm-signout').addEventListener('click', doSignOut);
+document.getElementById('btn-settings-signin').addEventListener('click', () => {
+  document.getElementById('settings-overlay').style.display = 'none';
+  if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' });
+});
 document.getElementById('btn-modal-signout').addEventListener('click', () => {
   document.getElementById('settings-overlay').style.display = 'none';
   doSignOut();
 });
 
 // Close popout when clicking outside
-document.addEventListener('click', () => {
-  document.getElementById('signout-popout').style.display = 'none';
+document.addEventListener('click', e => {
+  if (!document.getElementById('user-chip-wrap').contains(e.target))
+    document.getElementById('signout-popout').classList.remove('open');
 });
 
 // Settings modal
@@ -1737,14 +1887,28 @@ document.getElementById('lookback-pills').addEventListener('click', e => {
 });
 
 
+document.getElementById('theme-swatches').addEventListener('click', e => {
+  const swatch = e.target.closest('.theme-swatch');
+  if (!swatch) return;
+  applyTheme(swatch.dataset.theme);
+});
+
 // ── Init ─────────────────────────────────────────────────────────────────
-// Header date
-(function() {
+// Header date — updates at midnight
+function updateHeaderDate() {
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const d = new Date();
   document.getElementById('header-date').textContent = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
-})();
+}
+function scheduleHeaderDateUpdate() {
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  setTimeout(() => { updateHeaderDate(); scheduleHeaderDateUpdate(); }, nextMidnight - now);
+}
+applyTheme(localStorage.getItem('nb_theme') || 'rose');
+updateHeaderDate();
+scheduleHeaderDateUpdate();
 
 // Restore look-back pill
 if (winsLookback > 0) {
