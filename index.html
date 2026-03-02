@@ -557,50 +557,220 @@ header {
   align-items: center;
   gap: 10px;
 }
-#sync-status {
-  font-size: 0.7rem;
-  color: var(--text-muted);
+#header-date {
+  font-size: 0.78rem;
   font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 5px;
+  border-radius: 6px;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+}
+.icon-btn:hover { color: var(--accent); }
+.icon-btn.spinning { animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .btn-google-sign-in {
-  padding: 6px 14px;
+  padding: 7px 16px;
   border-radius: 999px;
-  border: 1.5px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-gray);
+  border: 1.5px solid var(--border-blush);
+  background: #fff;
+  color: var(--text-plum);
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
-.btn-google-sign-in:hover { border-color: var(--border-blush); color: var(--text-plum); }
-#user-info {
-  display: none;
+.btn-google-sign-in:hover { border-color: var(--accent); color: var(--accent); }
+
+/* User chip */
+#user-chip-wrap { position: relative; }
+#user-chip {
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  background: var(--ring-bg);
+  border: 1.5px solid var(--border-blush);
+  cursor: pointer;
+  transition: border-color 0.15s;
 }
-#user-name {
+#user-chip:hover { border-color: var(--accent); }
+.chip-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.72rem;
-  color: var(--text-gray);
-  max-width: 150px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+}
+.chip-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.chip-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-plum);
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.btn-sign-out {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1.5px solid var(--border);
-  background: none;
-  color: var(--text-light);
+
+/* Sign-out popout */
+.signout-popout {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: #fff;
+  border: 1.5px solid var(--border-light);
+  border-radius: 14px;
+  padding: 14px 16px 12px;
+  box-shadow: 0 8px 28px rgba(61,26,40,0.13);
+  min-width: 170px;
+  z-index: 200;
+  animation: popoutIn 0.15s ease;
+}
+@keyframes popoutIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.popout-email {
+  font-size: 0.75rem;
+  color: var(--text-gray);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 10px;
+}
+.popout-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-plum);
+  margin-bottom: 10px;
+}
+.popout-btns { display: flex; gap: 6px; }
+.btn-popout-cancel, .btn-popout-signout {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
 }
-.btn-sign-out:hover { border-color: var(--border-blush); color: var(--accent); }
+.btn-popout-cancel {
+  border: 1.5px solid var(--border);
+  background: none;
+  color: var(--text-gray);
+}
+.btn-popout-cancel:hover { border-color: var(--border-blush); color: var(--text-plum); }
+.btn-popout-signout {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+}
+.btn-popout-signout:hover { background: var(--accent-hover); }
+
+/* Settings modal */
+.modal {
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: 82vh;
+  background: #fff;
+  border: 1.5px solid var(--border-light);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(61,26,40,0.15);
+  display: flex;
+  flex-direction: column;
+  animation: modalIn 0.2s ease;
+  overflow: hidden;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(2%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+.modal-title { font-size: 0.9rem; font-weight: 600; color: var(--text-dark); }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-light);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.modal-close:hover { color: var(--accent); }
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.modal-section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+.lookback-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.lookback-pill {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-blush);
+  background: var(--bg-card);
+  color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.lookback-pill:hover { border-color: var(--accent); color: var(--accent); }
+.lookback-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.modal-signout-link {
+  background: none;
+  border: none;
+  color: var(--text-gray);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  transition: color 0.15s;
+  text-align: left;
+}
+.modal-signout-link:hover { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -608,11 +778,23 @@ header {
   <header>
     <span class="app-title">notebook <span class="glyph">✦</span></span>
     <div id="auth-area">
-      <span id="sync-status"></span>
-      <button class="btn-google-sign-in" id="btn-sign-in">sign in with google</button>
-      <div id="user-info">
-        <span id="user-name"></span>
-        <button class="btn-sign-out" id="btn-sign-out">sign out</button>
+      <span id="header-date"></span>
+      <button id="btn-sync" class="icon-btn" title="sync" style="display:none">↻</button>
+      <button id="btn-settings" class="icon-btn" title="settings">⚙</button>
+      <button id="btn-sign-in" class="btn-google-sign-in">sign in with google</button>
+      <div id="user-chip-wrap">
+        <div id="user-chip" style="display:none">
+          <div class="chip-avatar" id="chip-avatar"></div>
+          <span class="chip-name" id="chip-name"></span>
+        </div>
+        <div id="signout-popout" class="signout-popout" style="display:none">
+          <div id="popout-email" class="popout-email"></div>
+          <div class="popout-label">sign out?</div>
+          <div class="popout-btns">
+            <button id="btn-cancel-signout" class="btn-popout-cancel">cancel</button>
+            <button id="btn-confirm-signout" class="btn-popout-signout">sign out</button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -717,6 +899,31 @@ header {
       <div id="activity-list"></div>
     </div>
   </section>
+</div>
+
+<!-- ── Settings modal ── -->
+<div id="settings-overlay" style="display:none; position:fixed; inset:0; background:rgba(61,26,40,0.18); z-index:300; display:none; align-items:center; justify-content:center;">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">settings</span>
+      <button class="modal-close" id="btn-settings-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <div class="modal-section-label">wins look-back</div>
+        <div class="lookback-pills" id="lookback-pills">
+          <button class="lookback-pill active" data-days="">all time</button>
+          <button class="lookback-pill" data-days="7">7 days</button>
+          <button class="lookback-pill" data-days="30">30 days</button>
+          <button class="lookback-pill" data-days="90">90 days</button>
+        </div>
+      </div>
+      <div id="settings-account-section" style="display:none">
+        <div class="modal-section-label">account</div>
+        <button class="modal-signout-link" id="btn-modal-signout">sign out of google</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -827,71 +1034,62 @@ function initGoogleAuth() {
     callback: handleTokenResponse,
     error_callback: handleTokenError,
   });
-  // Attempt silent re-auth if previously signed in
   if (localStorage.getItem('nb_google_signin')) {
-    setSyncStatus('reconnecting...');
-    tokenClient.requestAccessToken({ prompt: '' });
+    // Restore chip from cache — no popup on load
+    updateAuthUI(true);
   }
 }
 
-function handleTokenError(err) {
-  // Called when the popup is blocked or closed by user
-  const hadSession = localStorage.getItem('nb_google_signin');
-  if (hadSession) {
-    setSyncStatus('');
-    updateAuthUI(false, true); // show reconnect state
-  }
+function handleTokenError() {
+  // Popup blocked or closed by user — do nothing, chip stays visible
 }
 
 async function handleTokenResponse(resp) {
-  if (resp.error) {
-    // Silent auth failed — keep email stored, show reconnect button
-    if (localStorage.getItem('nb_google_signin')) {
-      setSyncStatus('');
-      updateAuthUI(false, true);
-    } else {
-      updateAuthUI(false, false);
-    }
-    return;
-  }
+  if (resp.error) return; // closed popup etc — do nothing
   accessToken = resp.access_token;
   localStorage.setItem('nb_google_signin', '1');
-  // Fetch and store user email for reconnect UI
   try {
     const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` }
     }).then(r => r.json());
-    const email = info.email || info.name || '';
-    localStorage.setItem('nb_google_email', email);
-    document.getElementById('user-name').textContent = email;
+    localStorage.setItem('nb_google_email', info.email || '');
+    localStorage.setItem('nb_google_name', info.name || '');
+    localStorage.setItem('nb_google_picture', info.picture || '');
+    populateChip(info);
   } catch {}
-  updateAuthUI(true, false);
+  updateAuthUI(true);
   await loadFromDrive();
 }
 
-// signedIn: fully authenticated; reconnect: was signed in but token expired
-function updateAuthUI(signedIn, reconnect) {
-  const btnSignIn = document.getElementById('btn-sign-in');
-  const userInfo  = document.getElementById('user-info');
-  if (signedIn) {
-    btnSignIn.style.display = 'none';
-    userInfo.style.display = 'flex';
-  } else if (reconnect) {
-    const email = localStorage.getItem('nb_google_email');
-    btnSignIn.textContent = email ? `reconnect (${email})` : 'reconnect google';
-    btnSignIn.style.display = '';
-    userInfo.style.display = 'none';
+function populateChip(info) {
+  const avatar = document.getElementById('chip-avatar');
+  const nameEl = document.getElementById('chip-name');
+  if (info.picture) {
+    avatar.innerHTML = `<img src="${escHtml(info.picture)}" alt="">`;
   } else {
-    btnSignIn.textContent = 'sign in with google';
-    btnSignIn.style.display = '';
-    userInfo.style.display = 'none';
+    avatar.textContent = (info.name || info.email || '?')[0];
+  }
+  nameEl.textContent = (info.name || info.email || '').split(' ')[0];
+  document.getElementById('popout-email').textContent = info.email || '';
+}
+
+function updateAuthUI(signedIn) {
+  document.getElementById('btn-sign-in').style.display = signedIn ? 'none' : '';
+  const chip = document.getElementById('user-chip');
+  chip.style.display = signedIn ? 'flex' : 'none';
+  document.getElementById('btn-sync').style.display = signedIn ? '' : 'none';
+  document.getElementById('settings-account-section').style.display = signedIn ? '' : 'none';
+  // Restore chip from localStorage if page was refreshed mid-session
+  if (signedIn && !chip.querySelector('img') && !document.getElementById('chip-name').textContent) {
+    populateChip({
+      picture: localStorage.getItem('nb_google_picture') || '',
+      name:    localStorage.getItem('nb_google_name') || '',
+      email:   localStorage.getItem('nb_google_email') || '',
+    });
   }
 }
 
-function setSyncStatus(msg) {
-  const el = document.getElementById('sync-status');
-  if (el) el.textContent = msg;
-}
+function setSyncStatus() {} // visual state via spinning button only
 
 // Drive helpers
 async function driveRequest(url, opts = {}) {
@@ -900,9 +1098,8 @@ async function driveRequest(url, opts = {}) {
     headers: { Authorization: `Bearer ${accessToken}`, ...(opts.headers || {}) }
   });
   if (res.status === 401) {
-    // Token expired — prompt user to re-authenticate
     accessToken = null;
-    updateAuthUI(false, true);
+    updateAuthUI(false);
     throw new Error('token_expired');
   }
   return res;
@@ -945,7 +1142,8 @@ async function driveWriteFile(content) {
 }
 
 async function loadFromDrive() {
-  setSyncStatus('syncing...');
+  const syncBtn = document.getElementById('btn-sync');
+  if (syncBtn) syncBtn.classList.add('spinning');
   try {
     driveFileId = await driveFindFile();
     if (driveFileId) {
@@ -960,13 +1158,10 @@ async function loadFromDrive() {
       // First sign-in: push existing local data up to Drive
       await driveWriteFile({ wins, habits, reminders, activities });
     }
-    setSyncStatus('✓ synced');
-    setTimeout(() => setSyncStatus(''), 2500);
   } catch (e) {
-    if (e.message !== 'token_expired') {
-      console.error('[notebook] Drive sync error:', e);
-      setSyncStatus('sync failed — check console');
-    }
+    if (e.message !== 'token_expired') console.error('[notebook] Drive sync error:', e);
+  } finally {
+    if (syncBtn) syncBtn.classList.remove('spinning');
   }
 }
 
@@ -977,13 +1172,8 @@ function scheduleDriveSync() {
   syncTimer = setTimeout(async () => {
     try {
       await driveWriteFile({ wins, habits, reminders, activities });
-      setSyncStatus('✓ saved');
-      setTimeout(() => setSyncStatus(''), 2500);
     } catch (e) {
-      if (e.message !== 'token_expired') {
-        console.error('Drive sync error:', e);
-        setSyncStatus('sync error');
-      }
+      if (e.message !== 'token_expired') console.error('[notebook] Drive sync error:', e);
     }
   }, 1500);
 }
@@ -995,6 +1185,7 @@ let reminders = loadReminders();
 let activities = loadActivities();
 let currentActivityId = null;
 let selectedDuration = null;
+let winsLookback = parseInt(localStorage.getItem('nb_lookback') || '0'); // 0 = all time
 
 // ── Wins feed ────────────────────────────────────────────────────────────
 function renderWins() {
@@ -1007,9 +1198,20 @@ function renderWins() {
     return;
   }
 
+  // Filter by look-back window
+  const cutoff = winsLookback > 0 ? Date.now() - winsLookback * 86400000 : 0;
+  const visible = cutoff ? wins.filter(w => w.ts >= cutoff) : wins;
+  if (visible.length === 0) {
+    feed.innerHTML = `<div class="empty-state">
+      <span class="empty-glyph">✦</span>
+      <span class="empty-text">no wins in the last ${winsLookback} days</span>
+    </div>`;
+    return;
+  }
+
   // Group by ISO date
   const groups = {};
-  wins.forEach(w => {
+  visible.forEach(w => {
     const iso = isoFromEpoch(w.ts);
     if (!groups[iso]) groups[iso] = [];
     groups[iso].push(w);
@@ -1463,22 +1665,94 @@ document.getElementById('activity-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') addActivity();
 });
 
-// ── Auth button listeners ─────────────────────────────────────────────────
+// ── Auth & header listeners ───────────────────────────────────────────────
 document.getElementById('btn-sign-in').addEventListener('click', () => {
   if (!tokenClient) return;
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
 });
-document.getElementById('btn-sign-out').addEventListener('click', () => {
+
+document.getElementById('btn-sync').addEventListener('click', () => {
+  if (!accessToken) {
+    // Token expired/missing — re-auth then sync
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
+    return;
+  }
+  loadFromDrive();
+});
+
+// User chip → toggle sign-out popout
+document.getElementById('user-chip').addEventListener('click', e => {
+  e.stopPropagation();
+  const popout = document.getElementById('signout-popout');
+  popout.style.display = popout.style.display === 'none' ? '' : 'none';
+});
+document.getElementById('btn-cancel-signout').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('signout-popout').style.display = 'none';
+});
+
+function doSignOut() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
   accessToken = null;
   driveFileId = null;
   localStorage.removeItem('nb_google_signin');
   localStorage.removeItem('nb_google_email');
-  updateAuthUI(false, false);
-  setSyncStatus('');
+  localStorage.removeItem('nb_google_name');
+  localStorage.removeItem('nb_google_picture');
+  document.getElementById('signout-popout').style.display = 'none';
+  updateAuthUI(false);
+}
+document.getElementById('btn-confirm-signout').addEventListener('click', doSignOut);
+document.getElementById('btn-modal-signout').addEventListener('click', () => {
+  document.getElementById('settings-overlay').style.display = 'none';
+  doSignOut();
 });
 
+// Close popout when clicking outside
+document.addEventListener('click', () => {
+  document.getElementById('signout-popout').style.display = 'none';
+});
+
+// Settings modal
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('settings-overlay').style.display = 'flex';
+});
+document.getElementById('btn-settings-close').addEventListener('click', () => {
+  document.getElementById('settings-overlay').style.display = 'none';
+});
+document.getElementById('settings-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settings-overlay'))
+    document.getElementById('settings-overlay').style.display = 'none';
+});
+
+// Look-back pills
+document.getElementById('lookback-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.lookback-pill');
+  if (!pill) return;
+  document.querySelectorAll('.lookback-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  winsLookback = pill.dataset.days ? parseInt(pill.dataset.days) : 0;
+  localStorage.setItem('nb_lookback', winsLookback);
+  renderWins();
+});
+
+
 // ── Init ─────────────────────────────────────────────────────────────────
+// Header date
+(function() {
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const d = new Date();
+  document.getElementById('header-date').textContent = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+})();
+
+// Restore look-back pill
+if (winsLookback > 0) {
+  document.querySelectorAll('.lookback-pill').forEach(p => {
+    p.classList.toggle('active', parseInt(p.dataset.days || '0') === winsLookback);
+  });
+}
+
 renderWins();
 renderHabits();
 renderReminders();
