@@ -281,16 +281,12 @@ header {
 .check-circle.checked {
   background: var(--accent);
   border-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 65%;
 }
-.check-circle.checked::after {
-  content: '';
-  width: 8px;
-  height: 5px;
-  border-left: 2px solid #fff;
-  border-bottom: 2px solid #fff;
-  transform: rotate(-45deg) translate(1px, -1px);
-  display: block;
-}
+.check-circle.checked::after { display: none; }
 .check-circle:hover:not(.checked) { border-color: var(--accent); }
 
 .habit-body { flex: 1; min-width: 0; }
@@ -825,35 +821,67 @@ function initGoogleAuth() {
     client_id: GIS_CLIENT_ID,
     scope: DRIVE_SCOPE,
     callback: handleTokenResponse,
+    error_callback: handleTokenError,
   });
-  // Silent sign-in if previously authenticated
+  // Attempt silent re-auth if previously signed in
   if (localStorage.getItem('nb_google_signin')) {
+    setSyncStatus('reconnecting...');
     tokenClient.requestAccessToken({ prompt: '' });
+  }
+}
+
+function handleTokenError(err) {
+  // Called when the popup is blocked or closed by user
+  const hadSession = localStorage.getItem('nb_google_signin');
+  if (hadSession) {
+    setSyncStatus('');
+    updateAuthUI(false, true); // show reconnect state
   }
 }
 
 async function handleTokenResponse(resp) {
   if (resp.error) {
-    localStorage.removeItem('nb_google_signin');
-    updateAuthUI(false);
+    // Silent auth failed — keep email stored, show reconnect button
+    if (localStorage.getItem('nb_google_signin')) {
+      setSyncStatus('');
+      updateAuthUI(false, true);
+    } else {
+      updateAuthUI(false, false);
+    }
     return;
   }
   accessToken = resp.access_token;
   localStorage.setItem('nb_google_signin', '1');
-  // Fetch user info for display
+  // Fetch and store user email for reconnect UI
   try {
     const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` }
     }).then(r => r.json());
-    document.getElementById('user-name').textContent = info.email || info.name || '';
+    const email = info.email || info.name || '';
+    localStorage.setItem('nb_google_email', email);
+    document.getElementById('user-name').textContent = email;
   } catch {}
-  updateAuthUI(true);
+  updateAuthUI(true, false);
   await loadFromDrive();
 }
 
-function updateAuthUI(signedIn) {
-  document.getElementById('btn-sign-in').style.display = signedIn ? 'none' : '';
-  document.getElementById('user-info').style.display = signedIn ? 'flex' : 'none';
+// signedIn: fully authenticated; reconnect: was signed in but token expired
+function updateAuthUI(signedIn, reconnect) {
+  const btnSignIn = document.getElementById('btn-sign-in');
+  const userInfo  = document.getElementById('user-info');
+  if (signedIn) {
+    btnSignIn.style.display = 'none';
+    userInfo.style.display = 'flex';
+  } else if (reconnect) {
+    const email = localStorage.getItem('nb_google_email');
+    btnSignIn.textContent = email ? `reconnect (${email})` : 'reconnect google';
+    btnSignIn.style.display = '';
+    userInfo.style.display = 'none';
+  } else {
+    btnSignIn.textContent = 'sign in with google';
+    btnSignIn.style.display = '';
+    userInfo.style.display = 'none';
+  }
 }
 
 function setSyncStatus(msg) {
@@ -868,8 +896,9 @@ async function driveRequest(url, opts = {}) {
     headers: { Authorization: `Bearer ${accessToken}`, ...(opts.headers || {}) }
   });
   if (res.status === 401) {
-    // Token expired — request new one silently
-    tokenClient.requestAccessToken({ prompt: '' });
+    // Token expired — prompt user to re-authenticate
+    accessToken = null;
+    updateAuthUI(false, true);
     throw new Error('token_expired');
   }
   return res;
@@ -931,8 +960,8 @@ async function loadFromDrive() {
     setTimeout(() => setSyncStatus(''), 2500);
   } catch (e) {
     if (e.message !== 'token_expired') {
-      console.error('Drive sync error:', e);
-      setSyncStatus('sync error');
+      console.error('[notebook] Drive sync error:', e);
+      setSyncStatus('sync failed — check console');
     }
   }
 }
@@ -1440,7 +1469,8 @@ document.getElementById('btn-sign-out').addEventListener('click', () => {
   accessToken = null;
   driveFileId = null;
   localStorage.removeItem('nb_google_signin');
-  updateAuthUI(false);
+  localStorage.removeItem('nb_google_email');
+  updateAuthUI(false, false);
   setSyncStatus('');
 });
 
