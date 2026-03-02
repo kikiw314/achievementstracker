@@ -281,12 +281,16 @@ header {
 .check-circle.checked {
   background: var(--accent);
   border-color: var(--accent);
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 65%;
 }
-.check-circle.checked::after { display: none; }
+.check-circle.checked::after {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 9px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(40deg) translateY(-1px);
+}
 .check-circle:hover:not(.checked) { border-color: var(--accent); }
 
 .habit-body { flex: 1; min-width: 0; }
