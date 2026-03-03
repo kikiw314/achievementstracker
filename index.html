@@ -996,6 +996,7 @@ header,
 .plan-timeline {
   display: grid;
   grid-template-columns: 38px 1fr;
+  grid-auto-rows: 22px;
   overflow: hidden;
   position: relative;
 }
@@ -1112,6 +1113,28 @@ header,
 
 /* Tasks col drop-to-unschedule indicator */
 .plan-tasks-col.drag-over { box-shadow: 0 0 0 1.5px var(--accent); border-radius: 10px; }
+
+/* Small tasks section */
+.small-tasks-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--border-light);
+}
+.small-tasks-input-row { margin-bottom: 10px; }
+.small-task-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; background: var(--bg-card);
+  border: 1.5px solid var(--border-light); border-radius: 10px;
+  margin-bottom: 6px; position: relative;
+}
+.small-task-row:hover { border-color: var(--border-blush); }
+.small-task-row:hover .btn-delete { opacity: 1; }
+.small-task-text {
+  flex: 1; font-size: 0.855rem; font-weight: 400; color: var(--text-plum);
+  text-transform: lowercase; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.small-task-text.done-text { text-decoration: line-through; color: var(--text-light); }
 
 /* Day-range hour inputs */
 .plan-hr-input {
@@ -1238,6 +1261,14 @@ header,
         <div class="plan-tasks-label">tasks</div>
         <div id="plan-task-list"></div>
       </div>
+    </div>
+    <div class="small-tasks-section">
+      <div class="plan-tasks-label">small tasks</div>
+      <div class="input-row small-tasks-input-row">
+        <input id="small-task-input" class="text-input" type="text" placeholder="quick task..." maxlength="120" autocomplete="off" autocorrect="off">
+        <button class="btn-primary btn-add" id="btn-add-small-task" title="add">+</button>
+      </div>
+      <div id="small-task-list"></div>
     </div>
   </section>
 
@@ -1469,6 +1500,12 @@ function loadPlanner() {
 function savePlannerLocal(arr) { localStorage.setItem('sw_planner', JSON.stringify(arr)); }
 function savePlanner(arr) { savePlannerLocal(arr); scheduleDriveSync(); }
 
+function loadSmallTasks() {
+  try { return JSON.parse(localStorage.getItem('sw_small_tasks') || '[]'); } catch { return []; }
+}
+function saveSmallTasksLocal(arr) { localStorage.setItem('sw_small_tasks', JSON.stringify(arr)); }
+function saveSmallTasks(arr) { saveSmallTasksLocal(arr); scheduleDriveSync(); }
+
 function loadPlanSettings() {
   try {
     const d = JSON.parse(localStorage.getItem('sw_plan_settings') || '{}');
@@ -1516,6 +1553,21 @@ let driveFileId = null;
 let syncTimer = null;
 let tokenClient = null;
 
+// Persist token across page refreshes (sessionStorage survives Ctrl+R, cleared on tab close)
+function saveTokenSession(token, expiresIn) {
+  sessionStorage.setItem('nb_token', token);
+  sessionStorage.setItem('nb_token_exp', String(Date.now() + Math.max(0, expiresIn - 60) * 1000));
+}
+function loadTokenSession() {
+  const t = sessionStorage.getItem('nb_token');
+  const exp = parseInt(sessionStorage.getItem('nb_token_exp') || '0');
+  return (t && Date.now() < exp) ? t : null;
+}
+function clearTokenSession() {
+  sessionStorage.removeItem('nb_token');
+  sessionStorage.removeItem('nb_token_exp');
+}
+
 function initGoogleAuth() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GIS_CLIENT_ID,
@@ -1523,20 +1575,24 @@ function initGoogleAuth() {
     callback: handleTokenResponse,
     error_callback: handleTokenError,
   });
+  // Restore token from sessionStorage if still valid — no popup needed
   if (localStorage.getItem('nb_google_signin')) {
-    // Restore chip from cache — silently request token to load Drive data
-    updateAuthUI(true);
-    tokenClient.requestAccessToken({ prompt: '' });
+    const saved = loadTokenSession();
+    if (saved) {
+      accessToken = saved;
+      loadFromDrive(); // silently sync Drive data with saved token
+    }
   }
 }
 
 function handleTokenError() {
-  // Popup blocked or closed by user — do nothing, chip stays visible
+  // Popup blocked or closed — do nothing, localStorage data stays visible
 }
 
 async function handleTokenResponse(resp) {
-  if (resp.error) return; // closed popup etc — do nothing
+  if (resp.error) return;
   accessToken = resp.access_token;
+  saveTokenSession(resp.access_token, resp.expires_in || 3599);
   localStorage.setItem('nb_google_signin', '1');
   try {
     const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -1588,8 +1644,7 @@ async function driveRequest(url, opts = {}) {
     headers: { Authorization: `Bearer ${accessToken}`, ...(opts.headers || {}) }
   });
   if (res.status === 401) {
-    accessToken = null;
-    updateAuthUI(false);
+    accessToken = null; // token expired — user can re-sync by clicking ↻
     throw new Error('token_expired');
   }
   return res;
@@ -1644,14 +1699,15 @@ async function loadFromDrive() {
       if (Array.isArray(data.reminders))  { reminders = data.reminders; saveRemindersLocal(reminders); }
       if (Array.isArray(data.activities)) { activities = data.activities; saveActivitiesLocal(activities); }
       if (Array.isArray(data.planner))    { planner = data.planner;  savePlannerLocal(planner); }
+      if (Array.isArray(data.smallTasks)) { smallTasks = data.smallTasks; saveSmallTasksLocal(smallTasks); }
       if (data.planSettings && typeof data.planSettings === 'object') {
         planSettings = { dayStart: 6, dayEnd: 24, recurring: [], ...data.planSettings };
         savePlanSettingsLocal();
       }
-      renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner();
+      renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner(); renderSmallTasks();
     } else {
       // First sign-in: push existing local data up to Drive
-      await driveWriteFile({ wins, habits, reminders, activities, planner, planSettings });
+      await driveWriteFile({ wins, habits, reminders, activities, planner, smallTasks, planSettings });
     }
   } catch (e) {
     if (e.message !== 'token_expired') console.error('[notebook] Drive sync error:', e);
@@ -1666,7 +1722,7 @@ function scheduleDriveSync() {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {
     try {
-      await driveWriteFile({ wins, habits, reminders, activities, planner, planSettings });
+      await driveWriteFile({ wins, habits, reminders, activities, planner, smallTasks, planSettings });
     } catch (e) {
       if (e.message !== 'token_expired') console.error('[notebook] Drive sync error:', e);
     }
@@ -1680,6 +1736,7 @@ let habits = [];
 let reminders = [];
 let activities = DEFAULT_ACTIVITIES.map(a => ({ ...a }));
 let planner = [];
+let smallTasks = [];
 let planSettings = { dayStart: 6, dayEnd: 12, recurring: [] };
 let dragTaskId = null;
 let timelineScrolled = false;
@@ -2923,6 +2980,53 @@ if (planTasksCol) {
   });
 }
 
+// ── Small tasks ───────────────────────────────────────────────────────────
+function renderSmallTasks() {
+  const list = document.getElementById('small-task-list');
+  if (!list) return;
+  list.innerHTML = '';
+  smallTasks.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'small-task-row';
+    row.innerHTML = `
+      <div class="check-circle${t.done ? ' checked' : ''}" data-id="${escHtml(t.id)}"></div>
+      <span class="small-task-text${t.done ? ' done-text' : ''}">${escHtml(t.text)}</span>
+      <button class="btn-delete" data-id="${escHtml(t.id)}" title="delete">×</button>`;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('.check-circle').forEach(el =>
+    el.addEventListener('click', () => {
+      const t = smallTasks.find(x => x.id === el.dataset.id);
+      if (!t) return;
+      t.done = !t.done;
+      saveSmallTasks(smallTasks);
+      renderSmallTasks();
+    })
+  );
+  list.querySelectorAll('.btn-delete').forEach(btn =>
+    btn.addEventListener('click', () => {
+      smallTasks = smallTasks.filter(x => x.id !== btn.dataset.id);
+      saveSmallTasks(smallTasks);
+      renderSmallTasks();
+    })
+  );
+}
+
+function addSmallTask() {
+  const input = document.getElementById('small-task-input');
+  const text = input.value.trim().toLowerCase();
+  if (!text) return;
+  smallTasks.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2), text, done: false, createdAt: Date.now() });
+  saveSmallTasks(smallTasks);
+  renderSmallTasks();
+  input.value = '';
+}
+
+document.getElementById('btn-add-small-task').addEventListener('click', addSmallTask);
+document.getElementById('small-task-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addSmallTask();
+});
+
 // Timeline column width resize (right-edge handle)
 (function() {
   const handle = document.getElementById('tl-col-resize');
@@ -2991,12 +3095,14 @@ document.getElementById('btn-sign-in').addEventListener('click', () => {
 });
 
 document.getElementById('btn-sync').addEventListener('click', () => {
-  if (!accessToken) {
-    // Not signed in — prompt sign-in to load data from Drive
-    if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' });
-    return;
+  if (accessToken) { loadFromDrive(); return; }
+  const saved = loadTokenSession();
+  if (saved) { accessToken = saved; loadFromDrive(); return; }
+  if (localStorage.getItem('nb_google_signin') && tokenClient) {
+    // Signed in on this device — request token with no account picker prompt;
+    // Google auto-selects from existing session, handleTokenResponse will call loadFromDrive
+    tokenClient.requestAccessToken({ prompt: '' });
   }
-  loadFromDrive();
 });
 
 // User chip → sign in (if not signed in) or toggle sign-out popout
@@ -3010,10 +3116,12 @@ document.getElementById('user-chip').addEventListener('click', e => {
 });
 
 
+
 function doSignOut() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
   accessToken = null;
   driveFileId = null;
+  clearTokenSession();
   // Clear auth state
   localStorage.removeItem('nb_google_signin');
   localStorage.removeItem('nb_google_email');
@@ -3025,14 +3133,15 @@ function doSignOut() {
   localStorage.removeItem('sw_reminders');
   localStorage.removeItem('nb_activities');
   localStorage.removeItem('sw_planner');
+  localStorage.removeItem('sw_small_tasks');
   localStorage.removeItem('sw_plan_settings');
   // Reset in-memory state to empty
   wins = []; habits = []; reminders = [];
   activities = DEFAULT_ACTIVITIES.map(a => ({ ...a }));
-  planner = []; planSettings = { dayStart: 6, dayEnd: 12, recurring: [] };
+  planner = []; smallTasks = []; planSettings = { dayStart: 6, dayEnd: 12, recurring: [] };
   document.getElementById('signout-popout').classList.remove('open');
   updateAuthUI(false);
-  renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner();
+  renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner(); renderSmallTasks();
 }
 document.getElementById('btn-cancel-signout').addEventListener('click', e => {
   e.stopPropagation();
@@ -3108,7 +3217,18 @@ if (winsLookback > 0) {
   });
 }
 
+// Restore auth UI immediately from localStorage so sign-in button never flickers visible
+if (localStorage.getItem('nb_google_signin')) updateAuthUI(true);
+
+wins = loadWins();
+habits = loadHabits();
+reminders = loadReminders();
+activities = loadActivities();
+planner = loadPlanner();
+smallTasks = loadSmallTasks();
+planSettings = loadPlanSettings();
 renderPlanner();
+renderSmallTasks();
 renderWins();
 renderHabits();
 renderReminders();
