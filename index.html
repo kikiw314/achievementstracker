@@ -11,6 +11,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scrollbar-gutter: stable; }
 
 :root {
   --accent:       #d4849a;
@@ -52,10 +53,19 @@ header {
 .app-title .glyph { color: var(--accent); }
 
 /* ── Layout wrapper ─────────────────────────────────── */
-.container {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 0 20px;
+.container { padding: 0 20px; }
+
+/* Constrain all panels + chrome to a centered column */
+header,
+.tabs,
+#panel-wins,
+#panel-habits,
+#panel-reminders,
+#panel-bored,
+#panel-plan {
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ── Tab nav ─────────────────────────────────────────── */
@@ -216,7 +226,8 @@ header {
 .win-card:hover .btn-delete,
 .habit-row:hover .btn-delete,
 .reminder-row:hover .btn-delete,
-.activity-row:hover .btn-delete { opacity: 1; }
+.activity-row:hover .btn-delete,
+.plan-task-row:hover .btn-delete { opacity: 1; }
 .btn-delete:hover { color: var(--accent-hover); }
 .btn-edit {
   background: none;
@@ -231,7 +242,8 @@ header {
   opacity: 0;
   transition: opacity 0.15s, color 0.15s;
 }
-.activity-row:hover .btn-edit { opacity: 1; }
+.activity-row:hover .btn-edit,
+.plan-task-row:hover .btn-edit { opacity: 1; }
 .btn-edit:hover { color: var(--accent-hover); }
 .activity-row-input {
   flex: 1;
@@ -575,6 +587,18 @@ header {
   color: var(--text-muted);
   font-weight: 500;
   flex-shrink: 0;
+  cursor: pointer;
+}
+.duration-tag:hover { color: var(--accent); }
+.dur-inline-select {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem; font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  padding: 1px 5px;
+  outline: none; cursor: pointer; flex-shrink: 0;
 }
 
 /* ── Auth area ───────────────────────────────────────── */
@@ -835,6 +859,307 @@ header {
 }
 .theme-swatch:hover { transform: scale(1.15); }
 .theme-swatch.active { box-shadow: 0 0 0 2.5px #fff, 0 0 0 5px var(--text-dark); }
+
+/* ── Planner tab ─────────────────────────────────────── */
+.plan-input-area { max-width: 520px; margin: 0 auto; }
+.plan-settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding-bottom: 18px;
+  transition: color 0.15s;
+  user-select: none;
+}
+.plan-settings-toggle:hover { color: var(--accent); }
+.plan-settings-arrow { display: inline-block; transition: transform 0.2s; font-size: 0.7rem; }
+.plan-settings-toggle.open .plan-settings-arrow { transform: rotate(180deg); }
+
+.plan-body { display: flex; gap: 10px; align-items: flex-start; }
+/* Column that holds the wrap + the resize handles */
+.plan-tl-col {
+  width: 330px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  position: relative;
+}
+.plan-tasks-col { flex: 1; min-width: 170px; overflow: hidden; }
+
+/* Right-edge drag handle — sits in the gap between timeline and tasks */
+.tl-col-resize {
+  position: absolute; top: 0; right: -7px;
+  width: 14px; height: 100%;
+  cursor: ew-resize; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+}
+.tl-col-resize::after {
+  content: '';
+  width: 2px; height: 40px;
+  background: var(--border-light);
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+.tl-col-resize:hover::after { background: var(--text-muted); }
+
+.plan-tl-wrap {
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px 12px 0 0;
+  scroll-behavior: smooth;
+}
+@media (max-width: 480px) {
+  .plan-body { flex-direction: column; }
+  .plan-tasks-col { width: 100%; }
+}
+
+/* Settings panel */
+.plan-settings-panel {
+  display: none;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-radius: 14px;
+  padding: 16px 18px 18px;
+  margin-bottom: 22px;
+  animation: slideIn 0.15s ease;
+}
+.plan-settings-panel.open { display: block; }
+.plan-settings-heading {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 16px 0 10px;
+}
+.plan-settings-heading:first-child { margin-top: 0; }
+.plan-day-range { display: flex; align-items: center; gap: 8px; }
+.plan-day-range label { font-size: 0.82rem; color: var(--text-plum); }
+
+/* Recurring events */
+.recurring-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: var(--bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  transition: border-color 0.15s;
+  flex-wrap: wrap;
+}
+.recurring-row:hover { border-color: var(--border-blush); }
+.recurring-row-text {
+  font-size: 0.8rem;
+  color: var(--text-plum);
+  text-transform: lowercase;
+  flex: 1;
+  min-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recurring-row-time { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; flex-shrink: 0; }
+.recurring-days { display: flex; gap: 3px; flex-shrink: 0; }
+.rec-day-btn {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--border); background: none;
+  color: var(--text-gray); font-family: 'DM Sans', sans-serif;
+  font-size: 0.6rem; font-weight: 600; cursor: pointer;
+  transition: all 0.12s; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.rec-day-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.rec-day-btn:hover:not(.on) { border-color: var(--border-blush); color: var(--text-plum); }
+.recurring-dur-badge {
+  font-size: 0.65rem; color: var(--text-muted);
+  background: var(--ring-bg); padding: 2px 6px;
+  border-radius: 999px; flex-shrink: 0;
+}
+.plan-add-recurring {
+  display: flex; gap: 6px; margin-bottom: 10px;
+  align-items: center; flex-wrap: wrap;
+}
+.plan-add-recurring .text-input { flex: 1; min-width: 100px; font-size: 0.82rem; }
+.rec-time-select, .rec-dur-select {
+  padding: 8px 6px; border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--bg-card); color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif; font-size: 0.78rem;
+  outline: none; cursor: pointer; flex-shrink: 0; transition: border-color 0.15s;
+}
+.rec-time-select:focus, .rec-dur-select:focus { border-color: var(--accent); }
+.rec-days-toggle { display: flex; gap: 3px; }
+
+/* Timeline single-column */
+.plan-timeline {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  overflow: hidden;
+  position: relative;
+}
+.tl-label {
+  font-size: 0.57rem; font-weight: 500; color: var(--text-light);
+  padding: 4px 3px 0; text-align: right;
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-card); line-height: 1.15;
+}
+.tl-label.half { color: transparent; }
+.tl-label[data-last] { border-bottom: none; }
+.tl-slot {
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-card);
+  transition: background 0.1s;
+}
+.tl-slot.half { background: var(--bg); }
+.tl-slot.drag-over { background: var(--ring-bg) !important; }
+.tl-slot[data-last] { border-bottom: none; }
+.tl-task-chip {
+  z-index: 2; position: relative;
+  background: var(--ring-bg); border: 1.5px solid var(--border-blush);
+  border-radius: 6px; margin: 2px; overflow: hidden;
+  display: flex; flex-direction: column; cursor: grab;
+}
+.tl-chip-top { display: flex; align-items: center; gap: 3px; padding: 3px 4px 1px; }
+.tl-task-chip.short .tl-chip-top { padding: 1px 4px; }
+.tl-task-chip.short .tl-chip-dur { display: none; }
+.tl-chip-text {
+  flex: 1; font-size: 0.67rem; font-weight: 500; color: var(--text-plum);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-transform: lowercase;
+}
+.tl-chip-remove {
+  pointer-events: all; background: none; border: none;
+  color: var(--text-light); cursor: pointer;
+  font-size: 0.8rem; line-height: 1; padding: 0; flex-shrink: 0;
+  transition: color 0.12s;
+}
+.tl-chip-remove:hover { color: var(--accent); }
+.tl-chip-dur { font-size: 0.56rem; color: var(--text-muted); padding: 0 4px 3px; margin-top: auto; }
+.tl-recurring-chip {
+  pointer-events: none; z-index: 1;
+  background: var(--accent); border-radius: 6px;
+  margin: 2px; overflow: hidden;
+  display: flex; flex-direction: column; opacity: 0.6;
+}
+.tl-recurring-chip .tl-chip-text { color: #fff; }
+.tl-recurring-chip .tl-chip-dur  { color: rgba(255,255,255,0.8); }
+.tl-recurring-chip .tl-chip-remove {
+  pointer-events: all; color: rgba(255,255,255,0.75);
+}
+.tl-recurring-chip .tl-chip-remove:hover { color: #fff; }
+
+/* Plan task rows */
+.plan-tasks-label {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+}
+.plan-task-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: var(--bg-card);
+  border: 1.5px solid var(--border-light); border-radius: 12px;
+  margin-bottom: 7px; transition: border-color 0.15s;
+  animation: slideIn 0.2s ease; position: relative; cursor: grab;
+}
+.plan-task-row:hover { border-color: var(--border-blush); }
+.plan-task-row.dragging { opacity: 0.5; border-style: dashed; }
+.plan-task-row.scheduled { border-color: var(--border-blush); background: var(--ring-bg); }
+.plan-task-text {
+  flex: 1; font-size: 0.855rem; font-weight: 400; color: var(--text-plum);
+  text-transform: lowercase; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.plan-task-text.done-text { text-decoration: line-through; color: var(--text-light); }
+.plan-carryover-from { font-size: 0.65rem; color: var(--text-muted); flex-shrink: 0; white-space: nowrap; }
+.plan-duration-badge {
+  font-size: 0.7rem; font-weight: 500; color: var(--text-muted);
+  background: var(--ring-bg); padding: 2px 7px;
+  border-radius: 999px; flex-shrink: 0; white-space: nowrap;
+  cursor: pointer;
+}
+.plan-duration-badge:hover { background: var(--border-blush); color: var(--accent); }
+.plan-time-chip { font-size: 0.72rem; font-weight: 500; color: var(--accent); flex-shrink: 0; white-space: nowrap; }
+.plan-carryover-divider {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 10px;
+}
+.plan-carryover-divider::before, .plan-carryover-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-light);
+}
+.plan-custom-dur-input {
+  width: 58px; padding: 10px 6px; border: 1.5px solid var(--border);
+  border-radius: 10px; background: var(--bg-card); color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif; font-size: 0.8rem;
+  outline: none; transition: border-color 0.15s; flex-shrink: 0;
+}
+.plan-custom-dur-input:focus { border-color: var(--accent); }
+
+/* Blocked drop slot */
+.tl-slot.blocked { background: rgba(220,60,60,0.1) !important; }
+
+/* Chip resize handle */
+.tl-chip-resize {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 7px; cursor: ns-resize;
+  background: transparent;
+  border-radius: 0 0 4px 4px;
+  transition: background 0.12s;
+}
+.tl-task-chip:hover .tl-chip-resize { background: rgba(180,100,120,0.25); }
+
+/* Tasks col drop-to-unschedule indicator */
+.plan-tasks-col.drag-over { box-shadow: 0 0 0 1.5px var(--accent); border-radius: 10px; }
+
+/* Day-range hour inputs */
+.plan-hr-input {
+  width: 42px; padding: 7px 4px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--bg-card); color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif; font-size: 0.82rem;
+  text-align: center; outline: none; transition: border-color 0.15s;
+  -moz-appearance: textfield;
+}
+.plan-hr-input::-webkit-outer-spin-button,
+.plan-hr-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.plan-hr-input:focus { border-color: var(--accent); }
+
+/* Recurring time inputs (start / end) */
+.rec-time-input, .rec-date-input {
+  padding: 7px 5px; border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--bg-card); color: var(--text-plum);
+  font-family: 'DM Sans', sans-serif; font-size: 0.75rem;
+  outline: none; cursor: pointer; flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.rec-time-input:focus, .rec-date-input:focus { border-color: var(--accent); }
+/* Recurring indicator badge on task rows */
+.plan-recur-badge {
+  font-size: 0.65rem; color: var(--text-muted); flex-shrink: 0;
+}
+
+/* Timeline panel resize handle — full-width bar below the wrap */
+.tl-wrap-resize {
+  width: 100%; height: 12px;
+  cursor: ns-resize; flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.tl-wrap-resize:hover { background: var(--ring-bg); }
+.tl-wrap-resize::after {
+  content: '';
+  width: 36px; height: 2.5px;
+  background: var(--border);
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+.tl-wrap-resize:hover::after { background: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -865,14 +1190,59 @@ header {
 
   <!-- Tab nav -->
   <nav class="tabs" role="tablist">
-    <button class="tab-btn active" data-tab="wins" role="tab" aria-selected="true">wins</button>
+    <button class="tab-btn active" data-tab="plan" role="tab" aria-selected="true">plan</button>
+    <button class="tab-btn" data-tab="wins" role="tab" aria-selected="false">wins</button>
     <button class="tab-btn" data-tab="habits" role="tab" aria-selected="false">habits</button>
     <button class="tab-btn" data-tab="reminders" role="tab" aria-selected="false">reminders</button>
     <button class="tab-btn" data-tab="bored" role="tab" aria-selected="false">bored?</button>
   </nav>
 
+  <!-- ── PLAN PANEL ── -->
+  <section id="panel-plan" class="panel active" role="tabpanel">
+    <div class="plan-input-area">
+      <div class="input-row">
+        <input
+          id="plan-input"
+          class="text-input"
+          type="text"
+          placeholder="what do you need to do today?"
+          maxlength="120"
+          autocomplete="off"
+          autocorrect="off"
+        >
+        <select id="plan-duration" class="duration-select">
+          <option value="15">15m</option>
+          <option value="30" selected>30m</option>
+          <option value="45">45m</option>
+          <option value="60">1h</option>
+          <option value="90">1.5h</option>
+          <option value="120">2h</option>
+          <option value="180">3h</option>
+          <option value="custom">custom</option>
+        </select>
+        <input id="plan-custom-dur" type="number" min="5" max="480" placeholder="min" class="plan-custom-dur-input" style="display:none">
+        <button class="btn-primary btn-add" id="btn-add-plan" title="add task">+</button>
+      </div>
+      <span class="plan-settings-toggle" id="btn-plan-settings">settings <span class="plan-settings-arrow">↓</span></span>
+      <div class="plan-settings-panel" id="plan-settings-panel"></div>
+    </div>
+    <div class="plan-body">
+      <div class="plan-tl-col">
+        <div class="tl-col-resize" id="tl-col-resize"></div>
+        <div class="plan-tl-wrap" id="plan-tl-wrap">
+          <div class="plan-timeline" id="plan-timeline"></div>
+        </div>
+        <div class="tl-wrap-resize" id="tl-wrap-resize"></div>
+      </div>
+      <div class="plan-tasks-col">
+        <div class="plan-tasks-label">tasks</div>
+        <div id="plan-task-list"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── WINS PANEL ── -->
-  <section id="panel-wins" class="panel active" role="tabpanel">
+  <section id="panel-wins" class="panel" role="tabpanel">
     <div class="input-row">
       <input
         id="win-input"
@@ -1093,6 +1463,25 @@ function loadActivities() {
 function saveActivitiesLocal(arr) { localStorage.setItem('nb_activities', JSON.stringify(arr)); }
 function saveActivities(arr) { saveActivitiesLocal(arr); scheduleDriveSync(); }
 
+function loadPlanner() {
+  try { return JSON.parse(localStorage.getItem('sw_planner') || '[]'); } catch { return []; }
+}
+function savePlannerLocal(arr) { localStorage.setItem('sw_planner', JSON.stringify(arr)); }
+function savePlanner(arr) { savePlannerLocal(arr); scheduleDriveSync(); }
+
+function loadPlanSettings() {
+  try {
+    const d = JSON.parse(localStorage.getItem('sw_plan_settings') || '{}');
+    return {
+      dayStart:  typeof d.dayStart  === 'number' ? d.dayStart  : 6,
+      dayEnd:    typeof d.dayEnd    === 'number' ? d.dayEnd    : 12,
+      recurring: Array.isArray(d.recurring) ? d.recurring : []
+    };
+  } catch { return { dayStart: 6, dayEnd: 12, recurring: [] }; }
+}
+function savePlanSettingsLocal() { localStorage.setItem('sw_plan_settings', JSON.stringify(planSettings)); }
+function savePlanSettings() { savePlanSettingsLocal(); scheduleDriveSync(); }
+
 // ── Themes ───────────────────────────────────────────────────────────────
 const THEMES = {
   rose:     { accent:'#d4849a', hover:'#bf6f88', pale:'#f5d5e0', blush:'#edccd6', muted:'#c084a0' },
@@ -1253,10 +1642,15 @@ async function loadFromDrive() {
       if (Array.isArray(data.habits))     { habits = data.habits;    saveHabitsLocal(habits); }
       if (Array.isArray(data.reminders))  { reminders = data.reminders; saveRemindersLocal(reminders); }
       if (Array.isArray(data.activities)) { activities = data.activities; saveActivitiesLocal(activities); }
-      renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList();
+      if (Array.isArray(data.planner))    { planner = data.planner;  savePlannerLocal(planner); }
+      if (data.planSettings && typeof data.planSettings === 'object') {
+        planSettings = { dayStart: 6, dayEnd: 24, recurring: [], ...data.planSettings };
+        savePlanSettingsLocal();
+      }
+      renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner();
     } else {
       // First sign-in: push existing local data up to Drive
-      await driveWriteFile({ wins, habits, reminders, activities });
+      await driveWriteFile({ wins, habits, reminders, activities, planner, planSettings });
     }
   } catch (e) {
     if (e.message !== 'token_expired') console.error('[notebook] Drive sync error:', e);
@@ -1271,7 +1665,7 @@ function scheduleDriveSync() {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {
     try {
-      await driveWriteFile({ wins, habits, reminders, activities });
+      await driveWriteFile({ wins, habits, reminders, activities, planner, planSettings });
     } catch (e) {
       if (e.message !== 'token_expired') console.error('[notebook] Drive sync error:', e);
     }
@@ -1283,6 +1677,10 @@ let wins = loadWins();
 let habits = loadHabits();
 let reminders = loadReminders();
 let activities = loadActivities();
+let planner = loadPlanner();
+let planSettings = loadPlanSettings();
+let dragTaskId = null;
+let timelineScrolled = false;
 let currentActivityId = null;
 let selectedDuration = null;
 let winsLookback = parseInt(localStorage.getItem('nb_lookback') || '0'); // 0 = all time
@@ -1565,6 +1963,32 @@ function addReminder() {
 function fmtDur(d) { return d === 60 ? '1 hr' : d + ' min'; }
 function fmtDurShort(d) { return d === 60 ? '1h' : d + 'm'; }
 
+function fmtPlanDur(mins) {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h${m}m` : `${h}h`;
+}
+function getPlanDuration() {
+  const sel = document.getElementById('plan-duration');
+  if (!sel || sel.value === 'custom') {
+    const v = parseInt((document.getElementById('plan-custom-dur') || {}).value);
+    return v > 0 ? v : 30;
+  }
+  return parseInt(sel.value) || 30;
+}
+function fmt12h(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function fmtHourLabel(h) {
+  if (h === 0 || h === 24) return 'midnight';
+  if (h === 12) return 'noon';
+  return `${h > 12 ? h - 12 : h} ${h >= 12 ? 'pm' : 'am'}`;
+}
+
 function getAvailable() {
   return activities.filter(a => {
     if (!a.recurring && a.completed) return false;
@@ -1655,7 +2079,7 @@ function renderActivityList() {
     const row = document.createElement('div');
     row.className = 'activity-row';
     const durTag = a.duration != null
-      ? `<span class="duration-tag">${fmtDurShort(a.duration)}</span>` : '';
+      ? `<span class="duration-tag" data-id="${escHtml(a.id)}">${fmtDurShort(a.duration)}</span>` : '';
     row.innerHTML = `
       <div class="activity-row-text">${escHtml(a.text)}</div>
       ${durTag}
@@ -1664,6 +2088,35 @@ function renderActivityList() {
       <button class="btn-delete" title="delete" data-id="${escHtml(a.id)}">×</button>
     `;
     list.appendChild(row);
+  });
+
+  list.querySelectorAll('.duration-tag').forEach(tag => {
+    tag.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = tag.dataset.id;
+      const a = activities.find(x => x.id === id);
+      if (!a) return;
+      const sel = document.createElement('select');
+      sel.className = 'dur-inline-select';
+      [['','–'],['5','5m'],['15','15m'],['30','30m'],['60','1h']].forEach(([v, lbl]) => {
+        const opt = document.createElement('option');
+        opt.value = v; opt.textContent = lbl;
+        if (String(a.duration) === v || (v === '' && a.duration == null)) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      tag.replaceWith(sel);
+      sel.focus();
+      let saved = false;
+      function save() {
+        if (saved) return; saved = true;
+        a.duration = sel.value ? parseInt(sel.value) : null;
+        saveActivities(activities);
+        renderBored();
+        renderActivityList();
+      }
+      sel.addEventListener('change', save);
+      sel.addEventListener('blur', save);
+    });
   });
 
   list.querySelectorAll('.btn-edit').forEach(btn => {
@@ -1746,6 +2199,644 @@ function addActivity() {
   renderBored();
 }
 
+// ── Planner tab ───────────────────────────────────────────────────────────
+function todaysTasks() {
+  const today = todayISO();
+  return planner.filter(t => t.date === today || (t.date < today && !t.done));
+}
+
+function addPlanTask() {
+  const input = document.getElementById('plan-input');
+  const text = input.value.trim().toLowerCase();
+  if (!text) {
+    input.classList.add('flash-error');
+    input.focus();
+    setTimeout(() => input.classList.remove('flash-error'), 500);
+    return;
+  }
+  planner.push({
+    id: uid(),
+    text,
+    duration: getPlanDuration(),
+    scheduledTime: null,
+    done: false,
+    date: todayISO(),
+    createdAt: Date.now()
+  });
+  savePlanner(planner);
+  input.value = '';
+  renderPlanner();
+}
+
+function togglePlanTask(id) {
+  const task = planner.find(t => t.id === id);
+  if (!task) return;
+  task.done = !task.done;
+  savePlanner(planner);
+  renderPlanner();
+}
+
+function deletePlanTask(id) {
+  planner = planner.filter(t => t.id !== id);
+  savePlanner(planner);
+  renderPlanner();
+}
+
+function startEditPlanTask(id, rowEl) {
+  const task = planner.find(t => t.id === id);
+  if (!task) return;
+  const textEl = rowEl.querySelector('.plan-task-text');
+  const currentText = task.text;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = currentText;
+  input.className = 'activity-row-input';
+  input.maxLength = 120;
+  textEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let saved = false;
+  function save() {
+    if (saved) return;
+    saved = true;
+    const newText = input.value.trim().toLowerCase();
+    if (newText && newText !== currentText) {
+      task.text = newText;
+      savePlanner(planner);
+    }
+    renderPlanner();
+  }
+  input.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') save();
+    if (ev.key === 'Escape') { saved = true; renderPlanner(); }
+  });
+  input.addEventListener('blur', save);
+}
+
+function unscheduleTask(id) {
+  const task = planner.find(t => t.id === id);
+  if (!task) return;
+  task.scheduledTime = null;
+  savePlanner(planner);
+  renderPlanner();
+}
+
+function onTaskDragStart(e, id) {
+  dragTaskId = id;
+  e.dataTransfer.setData('text/plain', id);
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.plan-task-row').forEach(el => {
+      if (el.dataset.id === id) el.classList.add('dragging');
+    });
+  });
+}
+
+function onTaskDragEnd() {
+  document.querySelectorAll('.plan-task-row.dragging').forEach(el => el.classList.remove('dragging'));
+  dragTaskId = null;
+}
+
+function onSlotDragOver(e, slotEl) {
+  e.preventDefault();
+  slotEl.classList.add('drag-over');
+}
+
+function onSlotDragLeave(e, slotEl) {
+  if (!slotEl.contains(e.relatedTarget)) slotEl.classList.remove('drag-over');
+}
+
+function onSlotDrop(e, slotEl) {
+  e.preventDefault();
+  slotEl.classList.remove('drag-over');
+  const id = dragTaskId || e.dataTransfer.getData('text/plain');
+  if (!id) return;
+  const task = planner.find(t => t.id === id);
+  if (!task || task.done) return;
+  const time = slotEl.dataset.time;
+  const existing = planner.find(t => t.scheduledTime === time && t.id !== id && !t.done);
+  if (existing) existing.scheduledTime = null;
+  task.scheduledTime = time;
+  savePlanner(planner);
+  renderPlanner();
+}
+
+function generateTimeSlots(startH, endH) {
+  const slots = [];
+  for (let h = startH; h < endH; h++) {
+    slots.push({ h, m: 0,  time: `${String(h).padStart(2,'0')}:00` });
+    slots.push({ h, m: 15, time: `${String(h).padStart(2,'0')}:15` });
+    slots.push({ h, m: 30, time: `${String(h).padStart(2,'0')}:30` });
+    slots.push({ h, m: 45, time: `${String(h).padStart(2,'0')}:45` });
+  }
+  return slots;
+}
+
+function getTodayRecurring() {
+  const dow = new Date().getDay();
+  return planSettings.recurring.filter(r => Array.isArray(r.days) && r.days.includes(dow));
+}
+
+function snapTo15(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const snapped = Math.round(m / 15) * 15;
+  if (snapped >= 60) return `${String((h + 1) % 24).padStart(2,'0')}:00`;
+  return `${String(h).padStart(2,'0')}:${String(snapped).padStart(2,'0')}`;
+}
+function timeToMins(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function renderTimeline(tasks) {
+  const scheduled = {};
+  tasks.filter(t => !t.done && t.scheduledTime).forEach(t => { scheduled[t.scheduledTime] = t; });
+  const recurring = getTodayRecurring();
+  const { dayStart, dayEnd } = planSettings;
+  const slots = generateTimeSlots(dayStart, dayEnd);
+  const grid = document.getElementById('plan-timeline');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+  grid.style.gridTemplateRows = `repeat(${slots.length}, 18px)`;
+
+  // Snap recurring events to 15-min grid
+  const recurByTime = {};
+  recurring.forEach(r => {
+    if (!r.startTime) return;
+    const snapped = snapTo15(r.startTime);
+    if (slots.some(s => s.time === snapped)) recurByTime[snapped] = r;
+  });
+
+  // Helper: is a slot occupied by a task other than the one being dragged?
+  function slotConflict(time) {
+    return planner.some(t => t.scheduledTime === time && !t.done && t.id !== dragTaskId);
+  }
+  function clearSlotClasses() {
+    grid.querySelectorAll('.tl-slot.drag-over,.tl-slot.blocked')
+      .forEach(el => el.classList.remove('drag-over', 'blocked'));
+  }
+
+  // Labels + drop zones
+  slots.forEach((slot, i) => {
+    const isLast = i === slots.length - 1;
+    const isHour = slot.m === 0;
+    const isHalfHour = slot.m === 30;
+    const lbl = document.createElement('div');
+    lbl.className = `tl-label${isHour ? '' : ' half'}`;
+    lbl.style.gridRow = i + 1;
+    if (isHour) {
+      const h12 = slot.h % 12 || 12;
+      const ap = slot.h >= 12 ? 'pm' : 'am';
+      lbl.innerHTML = `${h12}<br><span style="font-size:0.5rem">${ap}</span>`;
+    } else if (isHalfHour) {
+      lbl.style.color = 'var(--border)';
+      lbl.style.fontSize = '0.5rem';
+      lbl.style.paddingTop = '3px';
+      lbl.textContent = '·';
+    }
+    if (isLast) lbl.dataset.last = 'true';
+    grid.appendChild(lbl);
+
+    const dz = document.createElement('div');
+    dz.className = `tl-slot${isHour ? '' : ' half'}`;
+    dz.style.gridRow = i + 1;
+    dz.dataset.time = slot.time;
+    if (isLast) dz.dataset.last = 'true';
+    dz.addEventListener('dragover', ev => {
+      ev.preventDefault();
+      clearSlotClasses();
+      dz.classList.add(slotConflict(slot.time) ? 'blocked' : 'drag-over');
+    });
+    dz.addEventListener('dragleave', ev => {
+      if (!dz.contains(ev.relatedTarget)) dz.classList.remove('drag-over', 'blocked');
+    });
+    dz.addEventListener('drop', ev => {
+      const conflict = slotConflict(slot.time);
+      dz.classList.remove('drag-over', 'blocked');
+      if (!conflict) onSlotDrop(ev, dz); else ev.preventDefault();
+    });
+    grid.appendChild(dz);
+  });
+
+  // Recurring event chips (read-only, placed by startTime)
+  slots.forEach((slot, i) => {
+    const r = recurByTime[slot.time];
+    if (!r) return;
+    const durMins = r.endTime
+      ? Math.max(15, timeToMins(r.endTime) - timeToMins(r.startTime))
+      : 15;
+    const span = Math.max(1, Math.round(durMins / 15));
+    const chip = document.createElement('div');
+    chip.className = 'tl-recurring-chip';
+    chip.style.gridColumn = '2'; chip.style.gridRow = `${i+1} / span ${span}`;
+    chip.innerHTML = `<div class="tl-chip-top">
+        <span class="tl-chip-text">${escHtml(r.name)}</span>
+        <button class="tl-chip-remove" data-id="${escHtml(r.id)}">×</button>
+      </div>
+      <span class="tl-chip-dur">${fmt12h(r.startTime)}–${fmt12h(r.endTime || r.startTime)}</span>`;
+    chip.querySelector('.tl-chip-remove').addEventListener('click', e => {
+      e.stopPropagation();
+      planSettings.recurring = planSettings.recurring.filter(rec => rec.id !== r.id);
+      savePlanSettings();
+      renderTimeline(todaysTasks());
+      if (document.getElementById('plan-settings-panel').classList.contains('open')) renderPlanSettings();
+    });
+    grid.appendChild(chip);
+  });
+
+  // Task chips
+  slots.forEach((slot, i) => {
+    const t = scheduled[slot.time];
+    if (!t) return;
+    let span = Math.max(1, Math.round(t.duration / 15));
+
+    const chip = document.createElement('div');
+    chip.className = `tl-task-chip${span === 1 ? ' short' : ''}`;
+    chip.style.gridColumn = '2'; chip.style.gridRow = `${i+1} / span ${span}`;
+    chip.draggable = true;
+    chip.innerHTML = `<div class="tl-chip-top">
+        <span class="tl-chip-text">${escHtml(t.text)}</span>
+        <button class="tl-chip-remove" data-id="${escHtml(t.id)}">×</button>
+      </div><span class="tl-chip-dur">${fmtPlanDur(t.duration)}</span>`;
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'tl-chip-resize';
+    chip.appendChild(resizeHandle);
+
+    // Drag to reschedule — custom drag image shows full chip height
+    chip.addEventListener('dragstart', e => {
+      e.stopPropagation();
+      onTaskDragStart(e, t.id);
+      const ghost = chip.cloneNode(true);
+      ghost.style.cssText = `position:fixed;top:-9999px;width:${chip.offsetWidth}px;`
+        + `height:${span * 18 - 4}px;opacity:0.85;pointer-events:none;`;
+      document.body.appendChild(ghost);
+      e.dataTransfer.setDragImage(ghost, e.offsetX, e.offsetY);
+      requestAnimationFrame(() => ghost.remove());
+    });
+    chip.addEventListener('dragend', onTaskDragEnd);
+    chip.addEventListener('dragover', e => {
+      e.preventDefault(); e.stopPropagation();
+      clearSlotClasses();
+      const dz = grid.querySelector(`.tl-slot[data-time="${slot.time}"]`);
+      if (dz) dz.classList.add(slotConflict(slot.time) ? 'blocked' : 'drag-over');
+    });
+    chip.addEventListener('dragleave', e => {
+      if (!chip.contains(e.relatedTarget)) clearSlotClasses();
+    });
+    chip.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      const conflict = slotConflict(slot.time);
+      clearSlotClasses();
+      if (!conflict) {
+        const dz = grid.querySelector(`.tl-slot[data-time="${slot.time}"]`);
+        if (dz) onSlotDrop(e, dz);
+      }
+    });
+
+    // Resize handle — drag bottom edge to change duration
+    resizeHandle.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const startY = e.clientY;
+      const startDuration = t.duration;
+      const startMins = timeToMins(t.scheduledTime);
+
+      function onMove(mv) {
+        const dy = mv.clientY - startY;
+        const deltaSlots = Math.round(dy / 18);
+        let newDur = Math.max(15, startDuration + deltaSlots * 15);
+        // Cap at the start of the next scheduled task
+        tasks.forEach(other => {
+          if (other.id !== t.id && !other.done && other.scheduledTime) {
+            const otherStart = timeToMins(other.scheduledTime);
+            if (otherStart > startMins) newDur = Math.min(newDur, otherStart - startMins);
+          }
+        });
+        t.duration = newDur;
+        const newSpan = Math.max(1, Math.round(newDur / 15));
+        chip.style.gridRow = `${i+1} / span ${newSpan}`;
+        chip.classList.toggle('short', newSpan === 1);
+        const durEl = chip.querySelector('.tl-chip-dur');
+        if (durEl) durEl.textContent = fmtPlanDur(newDur);
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        savePlanner(planner);
+        renderPlanner();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    grid.appendChild(chip);
+  });
+
+  grid.querySelectorAll('.tl-chip-remove').forEach(btn =>
+    btn.addEventListener('click', e => { e.stopPropagation(); unscheduleTask(btn.dataset.id); })
+  );
+
+  // Auto-scroll to current hour on first render only
+  if (!timelineScrolled) {
+    timelineScrolled = true;
+    const now = new Date();
+    const tNow = `${String(now.getHours()).padStart(2,'0')}:00`;
+    const target = grid.querySelector(`.tl-slot[data-time="${tNow}"]`);
+    const wrap = document.getElementById('plan-tl-wrap');
+    if (target && wrap) {
+      requestAnimationFrame(() => {
+        wrap.scrollTop = Math.max(0, target.getBoundingClientRect().top
+          - wrap.getBoundingClientRect().top + wrap.scrollTop - 40);
+      });
+    }
+  }
+}
+
+// ── Plan settings ─────────────────────────────────────────────────────────
+const REC_DAY_LABELS = ['S','M','T','W','T','F','S'];
+
+function makeTimeOptions(sel) {
+  let html = '';
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const t = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      html += `<option value="${t}"${t === sel ? ' selected' : ''}>${fmt12h(t)}</option>`;
+    }
+  }
+  return html;
+}
+
+function makeHourOptions(from, to, selected) {
+  let html = '';
+  for (let h = from; h <= to; h++) {
+    let label;
+    if (h === 0 || h === 24) label = '12 am (midnight)';
+    else if (h === 12) label = '12 pm (noon)';
+    else if (h < 12)  label = `${h} am`;
+    else              label = `${h - 12} pm`;
+    html += `<option value="${h}"${h === selected ? ' selected' : ''}>${label}</option>`;
+  }
+  return html;
+}
+
+function renderPlanSettings() {
+  const panel = document.getElementById('plan-settings-panel');
+  if (!panel) return;
+  const { dayStart, dayEnd, recurring } = planSettings;
+
+  const newDaysHTML = [1,2,3,4,5,6,0].map(d =>
+    `<button class="rec-day-btn${[1,2,3,4,5].includes(d) ? ' on' : ''}" data-day="${d}">${REC_DAY_LABELS[d]}</button>`
+  ).join('');
+
+  const recRowsHTML = recurring.map(r => {
+    const daysHTML = [1,2,3,4,5,6,0].map(d =>
+      `<button class="rec-day-btn${r.days.includes(d) ? ' on' : ''}" data-day="${d}">${REC_DAY_LABELS[d]}</button>`
+    ).join('');
+    const timeRange = r.startTime ? `${fmt12h(r.startTime)}–${fmt12h(r.endTime || r.startTime)}` : '';
+    return `<div class="recurring-row" data-id="${escHtml(r.id)}">
+      <span class="recurring-row-time">${timeRange}</span>
+      <span class="recurring-row-text">${escHtml(r.name)}</span>
+      <div class="recurring-days">${daysHTML}</div>
+      <button class="btn-edit" data-id="${escHtml(r.id)}" title="edit">✎</button>
+      <button class="btn-delete" data-id="${escHtml(r.id)}" title="delete">×</button>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="plan-settings-heading">day range</div>
+    <div class="plan-day-range">
+      <label>from</label>
+      <input type="number" class="plan-hr-input" id="ps-day-start" min="0" max="23" value="${dayStart}">
+      <label>to</label>
+      <input type="number" class="plan-hr-input" id="ps-day-end" min="1" max="24" value="${dayEnd}">
+      <span style="font-size:0.72rem;color:var(--text-muted)">(24h)</span>
+    </div>
+    <div class="plan-settings-heading">recurring events</div>
+    <div class="plan-add-recurring">
+      <input type="time" class="rec-time-input" id="ps-rec-start" value="09:00">
+      <span style="font-size:0.7rem;color:var(--text-muted);flex-shrink:0">–</span>
+      <input type="time" class="rec-time-input" id="ps-rec-end" value="10:00">
+      <input class="text-input" id="ps-rec-name" type="text" placeholder="event name" maxlength="80" autocorrect="off" autocomplete="off">
+      <div class="rec-days-toggle" id="ps-rec-days">${newDaysHTML}</div>
+      <button class="btn-primary btn-add" id="btn-add-recurring" title="add">+</button>
+    </div>
+    <div id="ps-recurring-list">${recRowsHTML || '<div style="font-size:0.8rem;color:var(--text-light);padding:2px 0">no recurring events yet</div>'}</div>
+  `;
+
+  document.getElementById('ps-day-start').addEventListener('change', e => {
+    const v = parseInt(e.target.value);
+    if (isNaN(v) || v < 0 || v > 23) return;
+    planSettings.dayStart = v;
+    if (planSettings.dayStart >= planSettings.dayEnd) planSettings.dayEnd = Math.min(24, planSettings.dayStart + 1);
+    savePlanSettings();
+    renderTimeline(todaysTasks());
+    renderPlanSettings();
+  });
+  document.getElementById('ps-day-end').addEventListener('change', e => {
+    const v = parseInt(e.target.value);
+    if (isNaN(v) || v < 1 || v > 24) return;
+    planSettings.dayEnd = v;
+    if (planSettings.dayEnd <= planSettings.dayStart) planSettings.dayStart = Math.max(0, planSettings.dayEnd - 1);
+    savePlanSettings();
+    renderTimeline(todaysTasks());
+    renderPlanSettings();
+  });
+
+  panel.querySelectorAll('#ps-rec-days .rec-day-btn').forEach(btn =>
+    btn.addEventListener('click', () => btn.classList.toggle('on'))
+  );
+
+  document.getElementById('btn-add-recurring').addEventListener('click', e => {
+    e.stopPropagation();
+    const name      = document.getElementById('ps-rec-name').value.trim().toLowerCase();
+    const startTime = document.getElementById('ps-rec-start').value;
+    const endTime   = document.getElementById('ps-rec-end').value;
+    const days      = [...panel.querySelectorAll('#ps-rec-days .rec-day-btn.on')].map(b => parseInt(b.dataset.day));
+    if (!name) {
+      document.getElementById('ps-rec-name').classList.add('flash-error');
+      setTimeout(() => document.getElementById('ps-rec-name').classList.remove('flash-error'), 500);
+      return;
+    }
+    if (!startTime || !endTime || endTime <= startTime || days.length === 0) return;
+    planSettings.recurring.push({ id: uid(), name, startTime, endTime, days });
+    savePlanSettings();
+    renderTimeline(todaysTasks());
+    renderPlanSettings();
+  });
+
+  panel.querySelectorAll('#ps-recurring-list .btn-delete').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      planSettings.recurring = planSettings.recurring.filter(r => r.id !== btn.dataset.id);
+      savePlanSettings();
+      renderTimeline(todaysTasks());
+      renderPlanSettings();
+    })
+  );
+
+  panel.querySelectorAll('#ps-recurring-list .rec-day-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.closest('.recurring-row').dataset.id;
+      const rec = planSettings.recurring.find(r => r.id === id);
+      if (!rec) return;
+      const day = parseInt(btn.dataset.day);
+      if (btn.classList.contains('on')) {
+        if (rec.days.length <= 1) return;
+        rec.days = rec.days.filter(d => d !== day);
+        btn.classList.remove('on');
+      } else {
+        rec.days.push(day);
+        btn.classList.add('on');
+      }
+      savePlanSettings();
+      renderTimeline(todaysTasks());
+    });
+  });
+
+  panel.querySelectorAll('#ps-recurring-list .btn-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const rec = planSettings.recurring.find(r => r.id === id);
+      if (!rec) return;
+      const row = btn.closest('.recurring-row');
+      const nameEl  = row.querySelector('.recurring-row-text');
+      const timeEl  = row.querySelector('.recurring-row-time');
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text'; nameInput.value = rec.name;
+      nameInput.className = 'activity-row-input'; nameInput.style.flex = '1';
+      nameInput.maxLength = 80;
+      nameEl.replaceWith(nameInput);
+      const startInput = document.createElement('input');
+      startInput.type = 'time'; startInput.className = 'rec-time-input';
+      startInput.value = rec.startTime || '09:00';
+      const endInput = document.createElement('input');
+      endInput.type = 'time'; endInput.className = 'rec-time-input';
+      endInput.value = rec.endTime || '10:00';
+      const sep = document.createElement('span');
+      sep.textContent = '–'; sep.style.cssText = 'font-size:0.7rem;color:var(--text-muted)';
+      if (timeEl) { timeEl.replaceWith(startInput); startInput.after(sep); sep.after(endInput); }
+      nameInput.focus(); nameInput.select();
+      let saved = false;
+      function saveEdit() {
+        if (saved) return; saved = true;
+        const newName = nameInput.value.trim().toLowerCase();
+        if (newName) rec.name = newName;
+        if (startInput.value) rec.startTime = startInput.value;
+        if (endInput.value && endInput.value > rec.startTime) rec.endTime = endInput.value;
+        savePlanSettings();
+        renderTimeline(todaysTasks());
+        renderPlanSettings();
+      }
+      nameInput.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') saveEdit();
+        if (ev.key === 'Escape') { saved = true; renderPlanSettings(); }
+      });
+      nameInput.addEventListener('blur', saveEdit);
+    });
+  });
+}
+
+function togglePlanSettings() {
+  const panel  = document.getElementById('plan-settings-panel');
+  const toggle = document.getElementById('btn-plan-settings');
+  const isOpen = panel.classList.toggle('open');
+  toggle.classList.toggle('open', isOpen);
+  if (isOpen) renderPlanSettings();
+}
+
+function renderPlanner() {
+  const today = todayISO();
+  let needsSave = false;
+
+  // Clear scheduled time on carryover tasks
+  planner.forEach(t => {
+    if (t.date < today && t.scheduledTime !== null) { t.scheduledTime = null; needsSave = true; }
+  });
+
+  if (needsSave) savePlannerLocal(planner);
+  const tasks = todaysTasks();
+  const todayTasks = tasks.filter(t => t.date === today);
+  const carryoverTasks = tasks.filter(t => t.date < today);
+  const list = document.getElementById('plan-task-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  function makeRow(t) {
+    const row = document.createElement('div');
+    row.className = 'plan-task-row' + (t.scheduledTime && !t.done ? ' scheduled' : '');
+    row.dataset.id = t.id;
+    if (!t.done) {
+      row.draggable = true;
+      row.addEventListener('dragstart', e => onTaskDragStart(e, t.id));
+      row.addEventListener('dragend', onTaskDragEnd);
+    }
+    const fromLabel = t.date < today
+      ? `<span class="plan-carryover-from">from&nbsp;${dayLabel(t.date)}</span>` : '';
+    const recurBadge = t.recurringId ? `<span class="plan-recur-badge" title="recurring">↻</span>` : '';
+    row.innerHTML = `
+      <div class="check-circle${t.done ? ' checked' : ''}" data-id="${escHtml(t.id)}"></div>
+      <span class="plan-task-text${t.done ? ' done-text' : ''}">${escHtml(t.text)}</span>
+      ${recurBadge}${fromLabel}
+      <span class="plan-duration-badge">${fmtPlanDur(t.duration)}</span>
+      <button class="btn-edit" title="edit" data-id="${escHtml(t.id)}">✎</button>
+      <button class="btn-delete" title="delete" data-id="${escHtml(t.id)}">×</button>
+    `;
+    row.querySelector('.plan-duration-badge').addEventListener('click', e => {
+      e.stopPropagation();
+      const badge = e.currentTarget;
+      const sel = document.createElement('select');
+      sel.className = 'dur-inline-select';
+      [[15,'15m'],[30,'30m'],[45,'45m'],[60,'1h'],[90,'1.5h'],[120,'2h'],[180,'3h']].forEach(([v, lbl]) => {
+        const opt = document.createElement('option');
+        opt.value = v; opt.textContent = lbl;
+        if (t.duration === v) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      badge.replaceWith(sel);
+      sel.focus();
+      let saved = false;
+      function save() {
+        if (saved) return; saved = true;
+        t.duration = parseInt(sel.value);
+        savePlanner(planner);
+        renderPlanner();
+      }
+      sel.addEventListener('change', save);
+      sel.addEventListener('blur', save);
+    });
+    return row;
+  }
+
+  if (todayTasks.length === 0 && carryoverTasks.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <span class="empty-glyph">◌</span>
+      <span class="empty-text">no tasks yet — add something to plan</span>
+    </div>`;
+  } else {
+    todayTasks.forEach(t => list.appendChild(makeRow(t)));
+    if (carryoverTasks.length > 0) {
+      const div = document.createElement('div');
+      div.className = 'plan-carryover-divider';
+      div.textContent = 'carried over';
+      list.appendChild(div);
+      carryoverTasks.forEach(t => list.appendChild(makeRow(t)));
+    }
+  }
+
+  list.querySelectorAll('.check-circle').forEach(c =>
+    c.addEventListener('click', () => togglePlanTask(c.dataset.id))
+  );
+  list.querySelectorAll('.btn-edit').forEach(btn =>
+    btn.addEventListener('click', e =>
+      startEditPlanTask(e.currentTarget.dataset.id, e.currentTarget.closest('.plan-task-row'))
+    )
+  );
+  list.querySelectorAll('.btn-delete').forEach(btn =>
+    btn.addEventListener('click', e => deletePlanTask(e.currentTarget.dataset.id))
+  );
+  renderTimeline(tasks);
+}
+
 // ── Tabs ─────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1783,11 +2874,7 @@ document.getElementById('time-filters').addEventListener('click', e => {
   document.querySelectorAll('.time-pill').forEach(p => p.classList.remove('active'));
   pill.classList.add('active');
   selectedDuration = pill.dataset.dur ? parseInt(pill.dataset.dur) : null;
-  // If current activity no longer fits, dismiss it
-  if (currentActivityId && selectedDuration !== null) {
-    const a = activities.find(a => a.id === currentActivityId);
-    if (!a || a.duration == null || a.duration > selectedDuration) currentActivityId = null;
-  }
+  currentActivityId = null;
   renderBored();
 });
 
@@ -1802,6 +2889,99 @@ document.getElementById('activity-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') addActivity();
 });
 
+document.getElementById('btn-add-plan').addEventListener('click', addPlanTask);
+document.getElementById('plan-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addPlanTask();
+});
+document.getElementById('plan-duration').addEventListener('change', () => {
+  const isCustom = document.getElementById('plan-duration').value === 'custom';
+  document.getElementById('plan-custom-dur').style.display = isCustom ? '' : 'none';
+  if (isCustom) document.getElementById('plan-custom-dur').focus();
+});
+document.getElementById('btn-plan-settings').addEventListener('click', togglePlanSettings);
+
+// Drag chip from timeline → tasks column to unschedule
+const planTasksCol = document.querySelector('.plan-tasks-col');
+if (planTasksCol) {
+  planTasksCol.addEventListener('dragover', e => {
+    if (!dragTaskId) return;
+    const task = planner.find(t => t.id === dragTaskId);
+    if (task && task.scheduledTime) { e.preventDefault(); planTasksCol.classList.add('drag-over'); }
+  });
+  planTasksCol.addEventListener('dragleave', e => {
+    if (!planTasksCol.contains(e.relatedTarget)) planTasksCol.classList.remove('drag-over');
+  });
+  planTasksCol.addEventListener('drop', e => {
+    e.preventDefault();
+    planTasksCol.classList.remove('drag-over');
+    const id = dragTaskId || e.dataTransfer.getData('text/plain');
+    if (!id) return;
+    const task = planner.find(t => t.id === id);
+    if (task && task.scheduledTime) unscheduleTask(id);
+  });
+}
+
+// Timeline column width resize (right-edge handle)
+(function() {
+  const handle = document.getElementById('tl-col-resize');
+  const col    = document.querySelector('.plan-tl-col');
+  if (!handle || !col) return;
+  const savedW = parseInt(localStorage.getItem('nb_tl_width') || '0');
+  if (savedW > 60) col.style.width = savedW + 'px';
+
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = col.getBoundingClientRect().width;
+    const bodyW  = col.closest('.plan-body').getBoundingClientRect().width;
+    function onMove(mv) {
+      const newW = Math.max(60, Math.min(bodyW - 180, startW + mv.clientX - startX));
+      col.style.width = newW + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      localStorage.setItem('nb_tl_width', Math.round(col.getBoundingClientRect().width));
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
+
+// Timeline panel height resize (full-width bottom bar, outside the scroll container)
+(function() {
+  const handle = document.getElementById('tl-wrap-resize');
+  const wrap   = document.getElementById('plan-tl-wrap');
+  if (!handle || !wrap) return;
+  const savedH = parseInt(localStorage.getItem('nb_tl_height') || '0');
+  wrap.style.height = (savedH > 60 ? savedH : 260) + 'px';
+
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = wrap.getBoundingClientRect().height;
+    function onMove(mv) {
+      wrap.style.height = Math.max(60, startH + mv.clientY - startY) + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      localStorage.setItem('nb_tl_height', Math.round(wrap.getBoundingClientRect().height));
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
+document.addEventListener('click', e => {
+  const panel  = document.getElementById('plan-settings-panel');
+  const toggle = document.getElementById('btn-plan-settings');
+  if (panel && panel.classList.contains('open') &&
+      !panel.contains(e.target) && !toggle.contains(e.target)) {
+    panel.classList.remove('open');
+    toggle.classList.remove('open');
+  }
+});
+
 // ── Auth & header listeners ───────────────────────────────────────────────
 document.getElementById('btn-sign-in').addEventListener('click', () => {
   if (!tokenClient) return;
@@ -1811,11 +2991,11 @@ document.getElementById('btn-sign-in').addEventListener('click', () => {
 document.getElementById('btn-sync').addEventListener('click', () => {
   if (!accessToken) {
     // Not signed in — just refresh from localStorage
-    wins = loadWins(); habits = loadHabits(); reminders = loadReminders(); activities = loadActivities();
+    wins = loadWins(); habits = loadHabits(); reminders = loadReminders(); activities = loadActivities(); planner = loadPlanner();
     const btn = document.getElementById('btn-sync');
     btn.classList.add('spinning');
     setTimeout(() => btn.classList.remove('spinning'), 500);
-    renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList();
+    renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner();
     return;
   }
   loadFromDrive();
@@ -1904,7 +3084,7 @@ function updateHeaderDate() {
 function scheduleHeaderDateUpdate() {
   const now = new Date();
   const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  setTimeout(() => { updateHeaderDate(); scheduleHeaderDateUpdate(); }, nextMidnight - now);
+  setTimeout(() => { updateHeaderDate(); renderPlanner(); scheduleHeaderDateUpdate(); }, nextMidnight - now);
 }
 applyTheme(localStorage.getItem('nb_theme') || 'rose');
 updateHeaderDate();
@@ -1917,6 +3097,7 @@ if (winsLookback > 0) {
   });
 }
 
+renderPlanner();
 renderWins();
 renderHabits();
 renderReminders();
