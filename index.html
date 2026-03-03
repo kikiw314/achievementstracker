@@ -1524,8 +1524,9 @@ function initGoogleAuth() {
     error_callback: handleTokenError,
   });
   if (localStorage.getItem('nb_google_signin')) {
-    // Restore chip from cache — no popup on load
+    // Restore chip from cache — silently request token to load Drive data
     updateAuthUI(true);
+    tokenClient.requestAccessToken({ prompt: '' });
   }
 }
 
@@ -1673,12 +1674,13 @@ function scheduleDriveSync() {
 }
 
 // ── State ────────────────────────────────────────────────────────────────
-let wins = loadWins();
-let habits = loadHabits();
-let reminders = loadReminders();
-let activities = loadActivities();
-let planner = loadPlanner();
-let planSettings = loadPlanSettings();
+// Data starts empty — only populated from Drive after sign-in
+let wins = [];
+let habits = [];
+let reminders = [];
+let activities = DEFAULT_ACTIVITIES.map(a => ({ ...a }));
+let planner = [];
+let planSettings = { dayStart: 6, dayEnd: 12, recurring: [] };
 let dragTaskId = null;
 let timelineScrolled = false;
 let currentActivityId = null;
@@ -2990,12 +2992,8 @@ document.getElementById('btn-sign-in').addEventListener('click', () => {
 
 document.getElementById('btn-sync').addEventListener('click', () => {
   if (!accessToken) {
-    // Not signed in — just refresh from localStorage
-    wins = loadWins(); habits = loadHabits(); reminders = loadReminders(); activities = loadActivities(); planner = loadPlanner();
-    const btn = document.getElementById('btn-sync');
-    btn.classList.add('spinning');
-    setTimeout(() => btn.classList.remove('spinning'), 500);
-    renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner();
+    // Not signed in — prompt sign-in to load data from Drive
+    if (tokenClient) tokenClient.requestAccessToken({ prompt: 'select_account' });
     return;
   }
   loadFromDrive();
@@ -3016,12 +3014,25 @@ function doSignOut() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
   accessToken = null;
   driveFileId = null;
+  // Clear auth state
   localStorage.removeItem('nb_google_signin');
   localStorage.removeItem('nb_google_email');
   localStorage.removeItem('nb_google_name');
   localStorage.removeItem('nb_google_picture');
+  // Clear all data from cache so nothing leaks when signed out
+  localStorage.removeItem('sw_wins');
+  localStorage.removeItem('sw_habits');
+  localStorage.removeItem('sw_reminders');
+  localStorage.removeItem('nb_activities');
+  localStorage.removeItem('sw_planner');
+  localStorage.removeItem('sw_plan_settings');
+  // Reset in-memory state to empty
+  wins = []; habits = []; reminders = [];
+  activities = DEFAULT_ACTIVITIES.map(a => ({ ...a }));
+  planner = []; planSettings = { dayStart: 6, dayEnd: 12, recurring: [] };
   document.getElementById('signout-popout').classList.remove('open');
   updateAuthUI(false);
+  renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList(); renderPlanner();
 }
 document.getElementById('btn-cancel-signout').addEventListener('click', e => {
   e.stopPropagation();
