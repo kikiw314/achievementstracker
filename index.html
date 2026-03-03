@@ -1026,6 +1026,8 @@ header,
 .tl-chip-top { display: flex; align-items: center; gap: 3px; padding: 3px 4px 1px; }
 .tl-task-chip.short .tl-chip-top { padding: 1px 4px; }
 .tl-task-chip.short .tl-chip-dur { display: none; }
+.tl-task-chip.done { opacity: 0.45; cursor: default; }
+.tl-task-chip.done .tl-chip-text { text-decoration: line-through; }
 .tl-chip-text {
   flex: 1; font-size: 0.67rem; font-weight: 500; color: var(--text-plum);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1098,18 +1100,30 @@ header,
 }
 .plan-custom-dur-input:focus { border-color: var(--accent); }
 
-/* Blocked drop slot */
-.tl-slot.blocked { background: rgba(220,60,60,0.1) !important; }
+/* Current time line */
+.tl-now-line {
+  position: absolute; left: 38px; right: 2px;
+  height: 2px; background: var(--accent);
+  z-index: 6; pointer-events: none; border-radius: 1px;
+}
+.tl-now-line::before {
+  content: ''; position: absolute;
+  left: -5px; top: -4px;
+  width: 9px; height: 9px;
+  border-radius: 50%; background: var(--accent);
+}
 
-/* Chip resize handle */
-.tl-chip-resize {
-  position: absolute; bottom: 0; left: 0; right: 0;
+/* Chip resize handles */
+.tl-chip-resize, .tl-chip-resize-top {
+  position: absolute; left: 0; right: 0;
   height: 7px; cursor: ns-resize;
   background: transparent;
-  border-radius: 0 0 4px 4px;
   transition: background 0.12s;
 }
-.tl-task-chip:hover .tl-chip-resize { background: rgba(180,100,120,0.25); }
+.tl-chip-resize { bottom: 0; border-radius: 0 0 4px 4px; }
+.tl-chip-resize-top { top: 0; border-radius: 4px 4px 0 0; }
+.tl-task-chip:hover .tl-chip-resize,
+.tl-task-chip:hover .tl-chip-resize-top { background: rgba(180,100,120,0.25); }
 
 /* Tasks col drop-to-unschedule indicator */
 .plan-tasks-col.drag-over { box-shadow: 0 0 0 1.5px var(--accent); border-radius: 10px; }
@@ -2052,7 +2066,7 @@ function getAvailable() {
   return activities.filter(a => {
     if (!a.recurring && a.completed) return false;
     if (selectedDuration === null) return true;
-    return a.duration != null && a.duration <= selectedDuration;
+    return a.duration != null && a.duration === selectedDuration;
   });
 }
 
@@ -2353,6 +2367,8 @@ function onTaskDragStart(e, id) {
 function onTaskDragEnd() {
   document.querySelectorAll('.plan-task-row.dragging').forEach(el => el.classList.remove('dragging'));
   dragTaskId = null;
+  document.querySelectorAll('.tl-slot.drag-over,.tl-slot.blocked')
+    .forEach(el => el.classList.remove('drag-over', 'blocked'));
 }
 
 function onSlotDragOver(e, slotEl) {
@@ -2375,6 +2391,7 @@ function onSlotDrop(e, slotEl) {
   const existing = planner.find(t => t.scheduledTime === time && t.id !== id && !t.done);
   if (existing) existing.scheduledTime = null;
   task.scheduledTime = time;
+  task.date = todayISO(); // promote carryover tasks to today so renderPlanner won't clear their time
   savePlanner(planner);
   renderPlanner();
 }
@@ -2405,10 +2422,16 @@ function timeToMins(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
 }
+function minsToTime(mins) {
+  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+}
 
 function renderTimeline(tasks) {
   const scheduled = {};
-  tasks.filter(t => !t.done && t.scheduledTime).forEach(t => { scheduled[t.scheduledTime] = t; });
+  // Done tasks fill slots first; non-done tasks override them if at the same time
+  tasks.filter(t => t.scheduledTime).forEach(t => {
+    if (!scheduled[t.scheduledTime] || !t.done) scheduled[t.scheduledTime] = t;
+  });
   const recurring = getTodayRecurring();
   const { dayStart, dayEnd } = planSettings;
   const slots = generateTimeSlots(dayStart, dayEnd);
@@ -2426,13 +2449,37 @@ function renderTimeline(tasks) {
     if (slots.some(s => s.time === snapped)) recurByTime[snapped] = r;
   });
 
-  // Helper: is a slot occupied by a task other than the one being dragged?
+  // Check if dragged task's full span starting at `time` overlaps any existing task
   function slotConflict(time) {
-    return planner.some(t => t.scheduledTime === time && !t.done && t.id !== dragTaskId);
+    const dragTask = planner.find(t => t.id === dragTaskId);
+    const dragDur = dragTask?.duration || 15;
+    const dragStart = timeToMins(time);
+    const dragEnd = dragStart + dragDur;
+    return planner.some(t => {
+      if (t.done || t.id === dragTaskId || !t.scheduledTime) return false;
+      const tStart = timeToMins(t.scheduledTime);
+      const tEnd = tStart + (t.duration || 15);
+      return dragStart < tEnd && dragEnd > tStart;
+    });
   }
   function clearSlotClasses() {
     grid.querySelectorAll('.tl-slot.drag-over,.tl-slot.blocked')
       .forEach(el => el.classList.remove('drag-over', 'blocked'));
+  }
+  // Highlight the full span of the dragged task across all slots it would occupy
+  function highlightDragSlots(startTime) {
+    clearSlotClasses();
+    if (!dragTaskId) return;
+    const dragTask = planner.find(t => t.id === dragTaskId);
+    const dragSpan = Math.max(1, Math.round((dragTask?.duration || 15) / 15));
+    const conflict = slotConflict(startTime);
+    const cls = conflict ? 'blocked' : 'drag-over';
+    const startIdx = slots.findIndex(s => s.time === startTime);
+    if (startIdx === -1) return;
+    for (let k = startIdx; k < Math.min(startIdx + dragSpan, slots.length); k++) {
+      const el = grid.querySelector(`.tl-slot[data-time="${slots[k].time}"]`);
+      if (el) el.classList.add(cls);
+    }
   }
 
   // Labels + drop zones
@@ -2463,16 +2510,14 @@ function renderTimeline(tasks) {
     if (isLast) dz.dataset.last = 'true';
     dz.addEventListener('dragover', ev => {
       ev.preventDefault();
-      clearSlotClasses();
-      dz.classList.add(slotConflict(slot.time) ? 'blocked' : 'drag-over');
+      highlightDragSlots(slot.time);
     });
     dz.addEventListener('dragleave', ev => {
-      if (!dz.contains(ev.relatedTarget)) dz.classList.remove('drag-over', 'blocked');
+      if (!dz.contains(ev.relatedTarget)) clearSlotClasses();
     });
     dz.addEventListener('drop', ev => {
-      const conflict = slotConflict(slot.time);
-      dz.classList.remove('drag-over', 'blocked');
-      if (!conflict) onSlotDrop(ev, dz); else ev.preventDefault();
+      clearSlotClasses();
+      if (!slotConflict(slot.time)) onSlotDrop(ev, dz); else ev.preventDefault();
     });
     grid.appendChild(dz);
   });
@@ -2510,13 +2555,23 @@ function renderTimeline(tasks) {
     let span = Math.max(1, Math.round(t.duration / 15));
 
     const chip = document.createElement('div');
-    chip.className = `tl-task-chip${span === 1 ? ' short' : ''}`;
+    chip.className = `tl-task-chip${span === 1 ? ' short' : ''}${t.done ? ' done' : ''}`;
     chip.style.gridColumn = '2'; chip.style.gridRow = `${i+1} / span ${span}`;
-    chip.draggable = true;
+    chip.draggable = !t.done;
     chip.innerHTML = `<div class="tl-chip-top">
         <span class="tl-chip-text">${escHtml(t.text)}</span>
         <button class="tl-chip-remove" data-id="${escHtml(t.id)}">×</button>
       </div><span class="tl-chip-dur">${fmtPlanDur(t.duration)}</span>`;
+
+    if (t.done) {
+      chip.querySelector('.tl-chip-remove').addEventListener('click', e => {
+        e.stopPropagation();
+        const task = planner.find(x => x.id === t.id);
+        if (task) { task.scheduledTime = null; savePlanner(planner); renderPlanner(); }
+      });
+      grid.appendChild(chip);
+      return;
+    }
 
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'tl-chip-resize';
@@ -2536,24 +2591,64 @@ function renderTimeline(tasks) {
     chip.addEventListener('dragend', onTaskDragEnd);
     chip.addEventListener('dragover', e => {
       e.preventDefault(); e.stopPropagation();
-      clearSlotClasses();
-      const dz = grid.querySelector(`.tl-slot[data-time="${slot.time}"]`);
-      if (dz) dz.classList.add(slotConflict(slot.time) ? 'blocked' : 'drag-over');
+      highlightDragSlots(slot.time);
     });
     chip.addEventListener('dragleave', e => {
       if (!chip.contains(e.relatedTarget)) clearSlotClasses();
     });
     chip.addEventListener('drop', e => {
       e.preventDefault(); e.stopPropagation();
-      const conflict = slotConflict(slot.time);
       clearSlotClasses();
-      if (!conflict) {
+      if (!slotConflict(slot.time)) {
         const dz = grid.querySelector(`.tl-slot[data-time="${slot.time}"]`);
         if (dz) onSlotDrop(e, dz);
       }
     });
 
-    // Resize handle — drag bottom edge to change duration
+    // Top resize handle — drag to change start time (keeps end time fixed)
+    const topResizeHandle = document.createElement('div');
+    topResizeHandle.className = 'tl-chip-resize-top';
+    chip.appendChild(topResizeHandle);
+    topResizeHandle.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const startY = e.clientY;
+      const origStartMins = timeToMins(t.scheduledTime);
+      const endMins = Math.min(origStartMins + t.duration, planSettings.dayEnd * 60);
+      function onMove(mv) {
+        const gridRect = grid.getBoundingClientRect();
+        const scheduleBottom = gridRect.top + slots.length * 18;
+        const clampedY = Math.max(gridRect.top, Math.min(mv.clientY, scheduleBottom));
+        const newSlotIdxRaw = Math.max(0, Math.min(slots.length - 1, Math.floor((clampedY - gridRect.top) / 18)));
+        let newStartMins = slots[newSlotIdxRaw].h * 60 + slots[newSlotIdxRaw].m;
+        newStartMins = Math.max(planSettings.dayStart * 60, newStartMins);
+        newStartMins = Math.min(endMins - 15, newStartMins);
+        // Don't overlap task ending just before
+        tasks.forEach(other => {
+          if (other.id !== t.id && !other.done && other.scheduledTime) {
+            const otherEnd = timeToMins(other.scheduledTime) + (other.duration || 15);
+            if (otherEnd <= endMins) newStartMins = Math.max(newStartMins, otherEnd);
+          }
+        });
+        t.scheduledTime = minsToTime(newStartMins);
+        t.duration = endMins - newStartMins;
+        const newSpan = Math.max(1, Math.round(t.duration / 15));
+        const newSlotIdx = slots.findIndex(s => s.time === t.scheduledTime);
+        if (newSlotIdx !== -1) chip.style.gridRow = `${newSlotIdx + 1} / span ${Math.min(newSpan, slots.length - newSlotIdx)}`;
+        chip.classList.toggle('short', newSpan === 1);
+        const durEl = chip.querySelector('.tl-chip-dur');
+        if (durEl) durEl.textContent = fmtPlanDur(t.duration);
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        savePlanner(planner);
+        renderPlanner();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // Bottom resize handle — drag to change duration (keeps start time fixed)
     resizeHandle.addEventListener('mousedown', e => {
       e.preventDefault(); e.stopPropagation();
       const startY = e.clientY;
@@ -2561,9 +2656,11 @@ function renderTimeline(tasks) {
       const startMins = timeToMins(t.scheduledTime);
 
       function onMove(mv) {
-        const dy = mv.clientY - startY;
-        const deltaSlots = Math.round(dy / 18);
-        let newDur = Math.max(15, startDuration + deltaSlots * 15);
+        const gridRect = grid.getBoundingClientRect();
+        const scheduleBottom = gridRect.top + slots.length * 18;
+        const clampedY = Math.max(gridRect.top, Math.min(mv.clientY, scheduleBottom));
+        const endSlotIdx = Math.min(slots.length - 1, Math.max(i, Math.floor((clampedY - gridRect.top) / 18)));
+        let newDur = Math.max(15, (endSlotIdx - i + 1) * 15);
         // Cap at the start of the next scheduled task
         tasks.forEach(other => {
           if (other.id !== t.id && !other.done && other.scheduledTime) {
@@ -2595,6 +2692,9 @@ function renderTimeline(tasks) {
     btn.addEventListener('click', e => { e.stopPropagation(); unscheduleTask(btn.dataset.id); })
   );
 
+  // Current time line
+  updateNowLine(grid, slots, planSettings.dayStart);
+
   // Auto-scroll to current hour on first render only
   if (!timelineScrolled) {
     timelineScrolled = true;
@@ -2609,6 +2709,22 @@ function renderTimeline(tasks) {
       });
     }
   }
+}
+
+function updateNowLine(grid, slots, dayStart) {
+  if (!grid) return;
+  const existing = grid.querySelector('.tl-now-line');
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const dayStartMins = dayStart * 60;
+  const dayEndMins = dayStartMins + slots.length * 15;
+  if (nowMins < dayStartMins || nowMins >= dayEndMins) {
+    if (existing) existing.remove();
+    return;
+  }
+  const line = existing || document.createElement('div');
+  if (!existing) { line.className = 'tl-now-line'; grid.appendChild(line); }
+  line.style.top = ((nowMins - dayStartMins) / 15 * 18) + 'px';
 }
 
 // ── Plan settings ─────────────────────────────────────────────────────────
@@ -2829,13 +2945,11 @@ function renderPlanner() {
       row.addEventListener('dragstart', e => onTaskDragStart(e, t.id));
       row.addEventListener('dragend', onTaskDragEnd);
     }
-    const fromLabel = t.date < today
-      ? `<span class="plan-carryover-from">from&nbsp;${dayLabel(t.date)}</span>` : '';
     const recurBadge = t.recurringId ? `<span class="plan-recur-badge" title="recurring">↻</span>` : '';
     row.innerHTML = `
       <div class="check-circle${t.done ? ' checked' : ''}" data-id="${escHtml(t.id)}"></div>
       <span class="plan-task-text${t.done ? ' done-text' : ''}">${escHtml(t.text)}</span>
-      ${recurBadge}${fromLabel}
+      ${recurBadge}
       <span class="plan-duration-badge">${fmtPlanDur(t.duration)}</span>
       <button class="btn-edit" title="edit" data-id="${escHtml(t.id)}">✎</button>
       <button class="btn-delete" title="delete" data-id="${escHtml(t.id)}">×</button>
@@ -3095,14 +3209,18 @@ document.getElementById('btn-sign-in').addEventListener('click', () => {
 });
 
 document.getElementById('btn-sync').addEventListener('click', () => {
+  updateHeaderDate();
   if (accessToken) { loadFromDrive(); return; }
   const saved = loadTokenSession();
   if (saved) { accessToken = saved; loadFromDrive(); return; }
   if (localStorage.getItem('nb_google_signin') && tokenClient) {
-    // Signed in on this device — request token with no account picker prompt;
-    // Google auto-selects from existing session, handleTokenResponse will call loadFromDrive
     tokenClient.requestAccessToken({ prompt: '' });
+    return;
   }
+  // Not signed in — just re-render from localStorage with updated date
+  wins = loadWins(); habits = loadHabits(); reminders = loadReminders();
+  activities = loadActivities(); planner = loadPlanner(); smallTasks = loadSmallTasks();
+  renderPlanner(); renderSmallTasks(); renderWins(); renderHabits(); renderReminders(); renderBored(); renderActivityList();
 });
 
 // User chip → sign in (if not signed in) or toggle sign-out popout
@@ -3209,6 +3327,12 @@ function scheduleHeaderDateUpdate() {
 applyTheme(localStorage.getItem('nb_theme') || 'rose');
 updateHeaderDate();
 scheduleHeaderDateUpdate();
+
+// Update now line every 10 seconds
+setInterval(() => {
+  const grid = document.getElementById('plan-timeline');
+  if (grid) updateNowLine(grid, generateTimeSlots(planSettings.dayStart, planSettings.dayEnd), planSettings.dayStart);
+}, 10000);
 
 // Restore look-back pill
 if (winsLookback > 0) {
